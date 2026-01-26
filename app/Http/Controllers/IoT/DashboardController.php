@@ -36,7 +36,7 @@ class DashboardController extends Controller
         return Inertia::render('iot/dashboard', [
             'devices' => $devices,
             'newDevice' => fn () => session('newDevice'),
-            'apiBaseUrl' => config('app.url') . '/api/v1',
+            'apiBaseUrl' => request()->getSchemeAndHttpHost() . '/api/v1',
         ]);
     }
 
@@ -74,7 +74,7 @@ class DashboardController extends Controller
                 ] : null,
             ],
             'chartData' => $chartData,
-            'apiBaseUrl' => config('app.url') . '/api/v1',
+            'apiBaseUrl' => request()->getSchemeAndHttpHost() . '/api/v1',
         ]);
     }
 
