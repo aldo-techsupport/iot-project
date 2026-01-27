@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\TelemetryController;
+use App\Http\Controllers\IoT\DashboardController;
 use App\Http\Middleware\AuthenticateDevice;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -34,5 +35,26 @@ Route::prefix('v1')->group(function () {
         
         // GET telemetry history
         Route::get('/devices/{device}/history', [TelemetryController::class, 'history']);
+    });
+
+    // Device endpoints (Require Device Key)
+    Route::prefix('iot')->middleware([AuthenticateDevice::class, 'throttle:device-api'])->group(function () {
+        // POST noise data from sensor
+        Route::post('/noise-data', [DashboardController::class, 'storeNoiseData']);
+        
+        // POST trigger calculation
+        Route::post('/noise-calculations/trigger', [DashboardController::class, 'triggerCalculation']);
+        
+        // POST calculate daily summary (Ls and TWA)
+        Route::post('/noise-calculations/daily-summary', [DashboardController::class, 'calculateDailySummary']);
+    });
+
+    // Dashboard endpoints (Public or Web Auth - for simplicity making them accessible, but in prod should be auth:sanctum)
+    Route::prefix('iot')->group(function () {
+        // GET noise calculations
+        Route::get('/noise-calculations', [DashboardController::class, 'getNoiseCalculations']);
+        
+        // GET real-time noise data
+        Route::get('/noise-data/realtime', [DashboardController::class, 'getRealTimeNoiseData']);
     });
 });

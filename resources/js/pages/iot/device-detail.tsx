@@ -3,12 +3,28 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ChartDataPoint, type DeviceDetail } from '@/types/iot';
 import { Head, Link, router } from '@inertiajs/react';
-import { Droplets, History, RefreshCw, ThermometerSun, Volume2 } from 'lucide-react';
+import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
+import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
+import PeriodSelector from '@/components/period-selector';
 
 interface Props {
     device: DeviceDetail;
     chartData: ChartDataPoint[];
+}
+
+interface NoiseCalculation {
+    id: number;
+    period: 'L1' | 'L2' | 'L3' | 'L4';
+    min_value: number;
+    max_value: number;
+    average_value: number;
+    leq_value: number;
+    thi_average: number;
+    data_count: number;
+    calculation_date: string;
+    updated_at: string;
 }
 
 const REFRESH_INTERVAL = 10000; // 10 detik
@@ -126,9 +142,19 @@ function SimpleLineChart({ data, dataKey, color, label }: { data: ChartDataPoint
 }
 
 export default function DeviceDetailPage({ device, chartData }: Props) {
+    const [activeTab, setActiveTab] = useState<'overview' | 'noise'>('overview');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
+
+    // Noise Dashboard State
+    const [selectedPeriod, setSelectedPeriod] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L1');
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [calculations, setCalculations] = useState<NoiseCalculation[]>([]);
+    const [dataCount, setDataCount] = useState<Record<'L1' | 'L2' | 'L3' | 'L4', number>>({
+        L1: 0, L2: 0, L3: 0, L4: 0,
+    });
+    const [loadingNoise, setLoadingNoise] = useState(false);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -147,23 +173,75 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
         });
     };
 
+    const fetchNoiseData = async () => {
+        try {
+            setLoadingNoise(true);
+
+            // Fetch calculations
+            const calcParams = new URLSearchParams({
+                device_id: device.id.toString(),
+                date: selectedDate,
+            });
+            const calcResponse = await fetch(`/api/v1/iot/noise-calculations?${calcParams}`);
+            const calcResult = await calcResponse.json();
+            if (calcResult.success) {
+                setCalculations(calcResult.data);
+            }
+
+            // Fetch counts
+            const periods: ('L1' | 'L2' | 'L3' | 'L4')[] = ['L1', 'L2', 'L3', 'L4'];
+            const counts: Record<string, number> = {};
+            await Promise.all(
+                periods.map(async (period) => {
+                    try {
+                        const params = new URLSearchParams({
+                            device_id: device.id.toString(),
+                            period,
+                            date: selectedDate,
+                        });
+                        const response = await fetch(`/api/v1/iot/noise-data/realtime?${params}`);
+                        const result = await response.json();
+                        if (result.success) {
+                            counts[period] = result.count;
+                        } else {
+                            counts[period] = 0;
+                        }
+                    } catch (e) {
+                        counts[period] = 0;
+                    }
+                })
+            );
+            setDataCount(counts as Record<'L1' | 'L2' | 'L3' | 'L4', number>);
+
+        } catch (error) {
+            console.error('Failed to fetch noise data:', error);
+        } finally {
+            setLoadingNoise(false);
+        }
+    };
+
     useEffect(() => {
         if (!autoRefresh) return;
-
         const interval = setInterval(() => {
             refresh();
+            if (activeTab === 'noise') {
+                fetchNoiseData();
+            }
         }, REFRESH_INTERVAL);
-
         return () => clearInterval(interval);
-    }, [autoRefresh]);
+    }, [autoRefresh, activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'noise') {
+            fetchNoiseData();
+        }
+    }, [activeTab, selectedDate]);
 
     const stats = useMemo(() => {
         if (chartData.length === 0) return null;
-
         const temps = chartData.map((d) => d.temperature);
         const humidities = chartData.map((d) => d.humidity);
         const noises = chartData.map((d) => d.noise_db);
-
         return {
             temperature: {
                 min: Math.min(...temps),
@@ -184,24 +262,27 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
     }, [chartData]);
 
     const telemetry = device.latest_telemetry;
+    const currentCalculation = calculations.find((c) => c.period === selectedPeriod);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${device.name} - IoT Monitoring`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{device.name}</h1>
                             <StatusBadge status={device.status} />
                         </div>
                         <p className="text-muted-foreground">{device.location || 'No location set'}</p>
-                        {device.description && <p className="mt-1 text-sm text-muted-foreground">{device.description}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={refresh}
+                                onClick={() => {
+                                    refresh();
+                                    if (activeTab === 'noise') fetchNoiseData();
+                                }}
                                 disabled={isRefreshing}
                                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                             >
@@ -227,58 +308,122 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                    <MetricCard
-                        title="Temperature"
-                        value={telemetry?.temperature ?? null}
-                        unit="°C"
-                        icon={ThermometerSun}
-                        color="text-orange-500"
-                        min={stats?.temperature.min}
-                        max={stats?.temperature.max}
-                        avg={stats?.temperature.avg}
-                    />
-                    <MetricCard
-                        title="Humidity"
-                        value={telemetry?.humidity ?? null}
-                        unit="%"
-                        icon={Droplets}
-                        color="text-blue-500"
-                        min={stats?.humidity.min}
-                        max={stats?.humidity.max}
-                        avg={stats?.humidity.avg}
-                    />
-                    <MetricCard
-                        title="Noise Level"
-                        value={telemetry?.noise_db ?? null}
-                        unit=" dB"
-                        icon={Volume2}
-                        color="text-purple-500"
-                        min={stats?.noise.min}
-                        max={stats?.noise.max}
-                        avg={stats?.noise.avg}
-                    />
+                {/* Tabs Navigation */}
+                <div className="border-b">
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'overview'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <Activity className="h-4 w-4" />
+                            Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('noise')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'noise'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <BarChart3 className="h-4 w-4" />
+                            Noise Analysis
+                        </button>
+                    </div>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>24-Hour Trends</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-6 md:grid-cols-3">
-                            <SimpleLineChart data={chartData} dataKey="temperature" color="#f97316" label="Temperature (°C)" />
-                            <SimpleLineChart data={chartData} dataKey="humidity" color="#3b82f6" label="Humidity (%)" />
-                            <SimpleLineChart data={chartData} dataKey="noise_db" color="#a855f7" label="Noise (dB)" />
+                {/* Tab Content: Overview */}
+                {activeTab === 'overview' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <MetricCard
+                                title="Temperature"
+                                value={telemetry?.temperature ?? null}
+                                unit="°C"
+                                icon={ThermometerSun}
+                                color="text-orange-500"
+                                min={stats?.temperature.min}
+                                max={stats?.temperature.max}
+                                avg={stats?.temperature.avg}
+                            />
+                            <MetricCard
+                                title="Humidity"
+                                value={telemetry?.humidity ?? null}
+                                unit="%"
+                                icon={Droplets}
+                                color="text-blue-500"
+                                min={stats?.humidity.min}
+                                max={stats?.humidity.max}
+                                avg={stats?.humidity.avg}
+                            />
+                            <MetricCard
+                                title="Noise Level"
+                                value={telemetry?.noise_db ?? null}
+                                unit=" dB"
+                                icon={Volume2}
+                                color="text-purple-500"
+                                min={stats?.noise.min}
+                                max={stats?.noise.max}
+                                avg={stats?.noise.avg}
+                            />
                         </div>
-                    </CardContent>
-                </Card>
 
-                {telemetry && (
-                    <p className="text-center text-sm text-muted-foreground">
-                        Last updated: {lastUpdate.toLocaleTimeString()}
-                        {autoRefresh && ' • Auto-refresh enabled'}
-                    </p>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>24-Hour Trends</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid gap-6 md:grid-cols-3">
+                                    <SimpleLineChart data={chartData} dataKey="temperature" color="#f97316" label="Temperature (°C)" />
+                                    <SimpleLineChart data={chartData} dataKey="humidity" color="#3b82f6" label="Humidity (%)" />
+                                    <SimpleLineChart data={chartData} dataKey="noise_db" color="#a855f7" label="Noise (dB)" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
+
+                {/* Tab Content: Noise Analysis */}
+                {activeTab === 'noise' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm font-medium">Date:</label>
+                                <input
+                                    type="date"
+                                    className="rounded-md border p-1 text-sm"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    max={new Date().toISOString().split('T')[0]}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-6">
+                            <PeriodSelector
+                                selectedPeriod={selectedPeriod}
+                                onChange={setSelectedPeriod}
+                                dataCount={dataCount}
+                            />
+
+                            <NoiseStatisticsPanel calculation={currentCalculation || null} loading={loadingNoise} />
+
+                            <RealTimeNoiseChart
+                                deviceId={device.id}
+                                period={selectedPeriod}
+                                date={selectedDate}
+                                autoRefresh={selectedDate === new Date().toISOString().split('T')[0] && autoRefresh}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <p className="text-center text-sm text-muted-foreground">
+                    Last updated: {lastUpdate.toLocaleTimeString()}
+                    {autoRefresh && ' • Auto-refresh enabled'}
+                </p>
             </div>
         </AppLayout>
     );

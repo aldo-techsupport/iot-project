@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\IoT\DashboardController;
 use App\Http\Requests\Api\StoreTelemetryRequest;
 use App\Models\Device;
+use App\Models\NoiseRawData;
+use App\Models\NoiseCalculation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -43,7 +46,7 @@ class TelemetryController extends Controller
 
         return $this->storeTelemetry($authenticatedDevice, $request);
     }
-
+    
     private function storeTelemetry(Device $device, StoreTelemetryRequest $request): JsonResponse
     {
         $telemetry = $device->telemetries()->create([
@@ -54,6 +57,68 @@ class TelemetryController extends Controller
         ]);
 
         $device->updateLastSeen();
+
+        // Auto-save to noise_raw_data if in monitoring period
+        $period = $this->detectPeriod();
+        $noiseMonitoring = null;
+        
+        if ($period !== null && $request->has('noise_db')) {
+            NoiseRawData::create([
+                'device_id' => $device->id,
+                'period' => $period,
+                'noise_level' => $request->input('noise_db'),
+                'temperature' => $request->input('temperature'),
+                'humidity' => $request->input('humidity'),
+                'measured_at' => $telemetry->measured_at,
+            ]);
+            
+            // Check if we have 120 data points
+            $count = NoiseRawData::where('device_id', $device->id)
+                ->where('period', $period)
+                ->whereDate('measured_at', now()->toDateString())
+                ->count();
+            
+            $noiseMonitoring = [
+                'period' => $period,
+                'count' => $count,
+                'target' => 120,
+            ];
+            
+            // Auto-trigger calculation if 120 data points reached
+            if ($count >= 120) {
+                try {
+                    $dashboardController = app(DashboardController::class);
+                    $response = $dashboardController->triggerCalculation(
+                        $device->id,
+                        $period,
+                        now()->toDateString()
+                    );
+                    
+                    if ($response->getStatusCode() == 200) {
+                        $noiseMonitoring['calculation_triggered'] = true;
+                        
+                        // Check if all periods complete, trigger daily summary
+                        $periodsComplete = NoiseCalculation::where('device_id', $device->id)
+                            ->whereDate('calculation_date', now()->toDateString())
+                            ->count();
+                        
+                        if ($periodsComplete >= 4) {
+                            try {
+                                $dashboardController->calculateDailySummary(
+                                    new Request(['device_id' => $device->id])
+                                );
+                                $noiseMonitoring['daily_summary_triggered'] = true;
+                            } catch (\Exception $e) {
+                                \Log::error('Daily summary calculation failed: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Noise calculation trigger failed: ' . $e->getMessage());
+                    $noiseMonitoring['calculation_error'] = $e->getMessage();
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -66,8 +131,33 @@ class TelemetryController extends Controller
                 'noise_db' => $telemetry->noise_db,
                 'measured_at' => $telemetry->measured_at->toIso8601String(),
             ],
+            'noise_monitoring' => $noiseMonitoring,
             'errors' => null,
         ], 201);
+    }
+
+    /**
+     * Detect current monitoring period based on time
+     * Returns L1, L2, L3, L4, or null if not in monitoring period
+     */
+    private function detectPeriod(): ?string
+    {
+        $hour = now()->hour;
+        $minute = now()->minute;
+        
+        // L1: 09:00-09:10 (mewakili 08:00-10:00)
+        if ($hour == 9 && $minute < 10) return 'L1';
+        
+        // L2: 11:00-11:10 (mewakili 10:00-12:00)
+        if ($hour == 11 && $minute < 10) return 'L2';
+        
+        // L3: 14:00-14:10 (mewakili 13:00-15:00)
+        if ($hour == 14 && $minute < 10) return 'L3';
+        
+        // L4: 16:00-16:10 (mewakili 15:00-17:00)
+        if ($hour == 16 && $minute < 10) return 'L4';
+        
+        return null;
     }
 
     /**
