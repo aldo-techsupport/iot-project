@@ -45,6 +45,164 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function monitoring(): Response
+    {
+        try {
+            $date = request()->input('date', now()->toDateString());
+            
+            \Log::info('Monitoring page accessed', ['date' => $date]);
+            
+            // Get all devices with their latest telemetry
+            $devices = Device::with('latestTelemetry')
+                ->orderBy('name')
+                ->get()
+                ->map(function($device) use ($date) {
+                    try {
+                        // Get calculations for all periods
+                        $calculations = NoiseCalculation::where('device_id', $device->id)
+                            ->whereDate('calculation_date', $date)
+                            ->get()
+                            ->keyBy('period');
+                        
+                        // Get timeout logs for today
+                        $timeoutLogs = \App\Models\NoiseTimeoutLog::where('device_id', $device->id)
+                            ->whereDate('expected_at', $date)
+                            ->orderBy('expected_at', 'desc')
+                            ->limit(10)
+                            ->get();
+                        
+                        // Get telemetry count for today
+                        $telemetryCount = Telemetry::where('device_id', $device->id)
+                            ->whereDate('measured_at', $date)
+                            ->count();
+                        
+                        // Get daily summary if exists
+                        $dailySummary = NoiseDailySummary::where('device_id', $device->id)
+                            ->whereDate('calculation_date', $date)
+                            ->first();
+                        
+                        // Determine device status
+                        $lastSeenMinutes = $device->last_seen_at ? 
+                            now()->diffInMinutes($device->last_seen_at) : null;
+                        
+                        $status = 'offline';
+                        if ($lastSeenMinutes !== null) {
+                            if ($lastSeenMinutes < 2) {
+                                $status = 'online';
+                            } elseif ($lastSeenMinutes < 10) {
+                                $status = 'warning';
+                            }
+                        }
+                        
+                        return [
+                            'id' => $device->id,
+                            'name' => $device->name,
+                            'slug' => $device->slug,
+                            'location' => $device->location,
+                            'description' => $device->description,
+                            'is_active' => $device->is_active,
+                            'status' => $status,
+                            'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+                            'last_seen_minutes' => $lastSeenMinutes,
+                            'latest_telemetry' => $device->latestTelemetry ? [
+                                'temperature' => $device->latestTelemetry->temperature,
+                                'humidity' => $device->latestTelemetry->humidity,
+                                'noise_db' => $device->latestTelemetry->noise_db,
+                                'measured_at' => $device->latestTelemetry->measured_at->toIso8601String(),
+                            ] : null,
+                            'telemetry_count_today' => $telemetryCount,
+                            'calculations' => [
+                                'L1' => $calculations->get('L1') ? [
+                                    'leq_value' => $calculations->get('L1')->leq_value,
+                                    'data_count' => $calculations->get('L1')->data_count,
+                                    'min_value' => $calculations->get('L1')->min_value,
+                                    'max_value' => $calculations->get('L1')->max_value,
+                                    'created_at' => $calculations->get('L1')->created_at->toIso8601String(),
+                                ] : null,
+                                'L2' => $calculations->get('L2') ? [
+                                    'leq_value' => $calculations->get('L2')->leq_value,
+                                    'data_count' => $calculations->get('L2')->data_count,
+                                    'min_value' => $calculations->get('L2')->min_value,
+                                    'max_value' => $calculations->get('L2')->max_value,
+                                    'created_at' => $calculations->get('L2')->created_at->toIso8601String(),
+                                ] : null,
+                                'L3' => $calculations->get('L3') ? [
+                                    'leq_value' => $calculations->get('L3')->leq_value,
+                                    'data_count' => $calculations->get('L3')->data_count,
+                                    'min_value' => $calculations->get('L3')->min_value,
+                                    'max_value' => $calculations->get('L3')->max_value,
+                                    'created_at' => $calculations->get('L3')->created_at->toIso8601String(),
+                                ] : null,
+                                'L4' => $calculations->get('L4') ? [
+                                    'leq_value' => $calculations->get('L4')->leq_value,
+                                    'data_count' => $calculations->get('L4')->data_count,
+                                    'min_value' => $calculations->get('L4')->min_value,
+                                    'max_value' => $calculations->get('L4')->max_value,
+                                    'created_at' => $calculations->get('L4')->created_at->toIso8601String(),
+                                ] : null,
+                            ],
+                            'daily_summary' => $dailySummary ? [
+                                'ls_value' => $dailySummary->ls_value,
+                                'twa_value' => $dailySummary->twa_value,
+                                'dnd_value' => $dailySummary->dnd_value,
+                            ] : null,
+                            'timeout_logs' => $timeoutLogs->map(fn($log) => [
+                                'expected_at' => $log->expected_at->toIso8601String(),
+                                'period' => $log->period,
+                                'timeout_seconds' => $log->timeout_seconds,
+                                'created_at' => $log->created_at->toIso8601String(),
+                            ]),
+                        ];
+                    } catch (\Exception $e) {
+                        \Log::error('Error processing device in monitoring', [
+                            'device_id' => $device->id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        
+                        // Return minimal device data on error
+                        return [
+                            'id' => $device->id,
+                            'name' => $device->name,
+                            'slug' => $device->slug,
+                            'location' => $device->location,
+                            'description' => $device->description,
+                            'is_active' => $device->is_active,
+                            'status' => 'offline',
+                            'last_seen_at' => null,
+                            'last_seen_minutes' => null,
+                            'latest_telemetry' => null,
+                            'telemetry_count_today' => 0,
+                            'calculations' => [
+                                'L1' => null,
+                                'L2' => null,
+                                'L3' => null,
+                                'L4' => null,
+                            ],
+                            'daily_summary' => null,
+                            'timeout_logs' => [],
+                        ];
+                    }
+                });
+
+            \Log::info('Rendering monitoring page', ['device_count' => $devices->count()]);
+
+            return Inertia::render('iot/monitoring', [
+                'devices' => $devices,
+                'selectedDate' => $date,
+                'currentDate' => now()->toDateString(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in monitoring method', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Fallback to simple error page or redirect
+            abort(500, 'Error loading monitoring page: ' . $e->getMessage());
+        }
+    }
+
     public function show(Device $device): Response
     {
         $device->load('latestTelemetry');
@@ -230,7 +388,7 @@ class DashboardController extends Controller
         $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
         $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-        // Select real data at 5-second intervals (with 2-minute safety buffer before start)
+        // Select real data at 5-second intervals from 24-hour telemetry data
         $selectedData = NoiseDataSelectionService::selectFiveSecondIntervalData(
             $validated['device_id'],
             $period,
@@ -238,23 +396,25 @@ class DashboardController extends Controller
             $officialEnd
         );
 
-        // Get total real data collected (including 2-minute safety buffer)
-        $safetyStart = $officialStart->copy()->subMinutes(2);
-        $totalCollected = NoiseRawData::where('device_id', $validated['device_id'])
-            ->where('period', $period)
+        // Get total telemetry data collected (including 1-minute extended period)
+        $extendedStart = $officialStart->copy()->subMinute();
+        $totalCollected = \App\Models\Telemetry::where('device_id', $validated['device_id'])
             ->whereDate('measured_at', $date)
-            ->whereBetween('measured_at', [$safetyStart, $officialEnd])
+            ->whereBetween('measured_at', [$extendedStart, $officialEnd])
             ->where('is_filled', false)
             ->count();
+        
+        // Count how many are from official period
+        $fromOfficial = $selectedData->filter(fn($d) => $d->measured_at->gte($officialStart))->count();
 
-        // Format response
+        // Format response - map telemetry fields to noise data format
         $formattedData = $selectedData->map(fn($d) => [
-            'noise_level' => (float) $d->noise_level,
+            'noise_level' => (float) ($d->noise_db ?? 0), // telemetry uses 'noise_db'
             'temperature' => (float) $d->temperature,
             'humidity' => (float) $d->humidity,
             'measured_at' => $d->measured_at->toIso8601String(),
-            'is_filled' => false, // All data is real now
-            'fill_method' => null,
+            'is_filled' => (bool) $d->is_filled,
+            'fill_method' => $d->fill_method,
         ])->values();
 
         return response()->json([
@@ -262,7 +422,7 @@ class DashboardController extends Controller
             'data' => $formattedData,
             'count' => $formattedData->count(),
             'total_collected' => $totalCollected,
-            'from_official_period' => $selectedData->count(),
+            'from_official_period' => $fromOfficial,
         ]);
     }
 
@@ -309,18 +469,18 @@ class DashboardController extends Controller
             $officialEnd
         );
 
-        // Get total real data collected (including 1-minute safety buffer)
-        $safetyStart = $officialStart->copy()->subMinute();
-        $totalCollected = NoiseRawData::where('device_id', $deviceId)
-            ->where('period', $period)
+        // Get total telemetry data collected (including 1-minute extended period)
+        $extendedStart = $officialStart->copy()->subMinute();
+        $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
             ->whereDate('measured_at', $date)
-            ->whereBetween('measured_at', [$safetyStart, $officialEnd])
+            ->whereBetween('measured_at', [$extendedStart, $officialEnd])
             ->where('is_filled', false)
             ->count();
 
         // Convert to array for calculation
+        // Note: Telemetry model uses 'noise_db', not 'noise_level'
         $rawData = $selectedData->map(fn($d) => [
-            'noise_level' => (float) $d->noise_level,
+            'noise_level' => (float) ($d->noise_db ?? $d->noise_level ?? 0),
             'temperature' => (float) $d->temperature,
             'humidity' => (float) $d->humidity,
         ])->values()->toArray();

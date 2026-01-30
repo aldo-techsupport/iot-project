@@ -13,13 +13,18 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Cpu, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Cpu, Folder, LayoutGrid, Activity } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'IoT Monitoring',
+        title: 'Dashboard',
         href: '/iot',
+        icon: LayoutGrid,
+    },
+    {
+        title: 'IoT Monitoring',
+        href: '/iot/devices',
         icon: Cpu,
     },
 ];

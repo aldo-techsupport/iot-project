@@ -23,8 +23,7 @@ interface Props {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'IoT Monitoring', href: '/iot' },
+    { title: 'IoT Monitoring' },
 ];
 
 const REFRESH_INTERVAL = 10000;

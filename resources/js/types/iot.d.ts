@@ -14,6 +14,7 @@ export interface TelemetryRecord extends TelemetryData {
 export interface DeviceSummary {
     id: number;
     name: string;
+    slug: string;
     location: string | null;
     description: string | null;
     is_active: boolean;

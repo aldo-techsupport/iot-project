@@ -12,12 +12,13 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
+        return redirect('/iot');
     })->name('dashboard');
 
     // IoT Dashboard Routes
     Route::prefix('iot')->name('iot.')->group(function () {
-        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'monitoring'])->name('dashboard');
+        Route::get('/devices', [DashboardController::class, 'index'])->name('devices');
         Route::post('/devices', [DeviceController::class, 'store'])->name('device.store');
         Route::get('/devices/{device}', [DashboardController::class, 'show'])->name('device.show');
         Route::put('/devices/{device}', [DeviceController::class, 'update'])->name('device.update');
