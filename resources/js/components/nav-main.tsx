@@ -19,9 +19,13 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                             asChild
-                            isActive={page.url.startsWith(
-                                resolveUrl(item.href),
-                            )}
+                            isActive={
+                                page.url === resolveUrl(item.href) ||
+                                (resolveUrl(item.href) !== '/iot' &&
+                                    page.url.startsWith(
+                                        resolveUrl(item.href) + '/',
+                                    ))
+                            }
                             tooltip={{ children: item.title }}
                         >
                             <Link href={item.href} prefetch>

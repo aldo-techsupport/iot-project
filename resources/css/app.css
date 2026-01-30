@@ -68,33 +68,36 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
+    --primary: oklch(0.5 0.2 250);
+    /* Blue primary */
     --primary-foreground: oklch(0.985 0 0);
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
+    --accent: oklch(0.95 0.05 250);
+    /* Light blue accent */
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
+    --ring: oklch(0.5 0.2 250);
+    /* Blue ring */
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --sidebar: oklch(0.65 0.18 250);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary-foreground: oklch(0.65 0.18 250);
+    --sidebar-accent: oklch(0.6 0.18 250);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.7 0.18 250);
+    --sidebar-ring: oklch(0.985 0 0);
 }
 
 .dark {
@@ -104,19 +107,22 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.145 0 0);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
+    --primary: oklch(0.6 0.2 250);
+    /* Lighter blue for dark mode */
+    --primary-foreground: oklch(0.985 0 0);
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    --accent: oklch(0.3 0.1 250);
+    /* Dark blue accent */
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.637 0.237 25.331);
     --border: oklch(0.269 0 0);
     --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
+    --ring: oklch(0.6 0.2 250);
+    /* Blue ring */
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
@@ -124,12 +130,15 @@
     --chart-5: oklch(0.645 0.246 16.439);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.6 0.2 250);
+    /* Blue for burger menu and logo */
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent: oklch(0.3 0.1 250);
+    /* Dark blue for hover */
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --sidebar-ring: oklch(0.6 0.2 250);
+    /* Blue ring */
 }
 
 @layer base {
@@ -139,5 +148,33 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+@layer components {
+
+    /* Blue background for burger menu button */
+    [data-sidebar="trigger"] {
+        @apply bg-blue-600 text-white hover:bg-blue-700;
+    }
+
+    /* Gray background for active menu items instead of blue */
+    [data-sidebar="menu-button"][data-active="true"] {
+        @apply bg-gray-200 text-gray-900 font-medium;
+    }
+
+    /* Dark mode: Gray background for active menu items */
+    .dark [data-sidebar="menu-button"][data-active="true"] {
+        @apply bg-gray-700 text-white font-medium;
+    }
+
+    /* Hover state for menu items - light gray */
+    [data-sidebar="menu-button"]:hover {
+        @apply bg-gray-100 text-gray-900;
+    }
+
+    /* Dark mode: Hover state for menu items */
+    .dark [data-sidebar="menu-button"]:hover {
+        @apply bg-gray-800 text-white;
     }
 }
