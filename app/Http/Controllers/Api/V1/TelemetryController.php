@@ -49,11 +49,30 @@ class TelemetryController extends Controller
     
     private function storeTelemetry(Device $device, StoreTelemetryRequest $request): JsonResponse
     {
+        // Rate Limit Check: 5 Seconds
+        $lastTelemetry = $device->telemetries()->latest('measured_at')->first();
+        $incomingTime = $request->getMeasuredAt();
+
+        if ($lastTelemetry) {
+            // Ensure absolute difference to handle any timezone quirks or parameter ordering
+            $diff = abs($incomingTime->diffInSeconds($lastTelemetry->measured_at));
+            
+            if ($diff < 5) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Rate limit exceeded (5s rule). Data ignored.',
+                    'data' => null,
+                ], 200);
+            }
+        }
+
         $telemetry = $device->telemetries()->create([
             'temperature' => $request->input('temperature'),
             'humidity' => $request->input('humidity'),
             'noise_db' => $request->input('noise_db'),
-            'measured_at' => $request->getMeasuredAt(),
+            'measured_at' => $incomingTime,
+            'is_filled' => false,
+            'fill_method' => 'actual',
         ]);
 
         $device->updateLastSeen();
@@ -63,6 +82,14 @@ class TelemetryController extends Controller
         $noiseMonitoring = null;
         
         if ($period !== null && $request->has('noise_db')) {
+            // Check for gaps before saving current data
+            try {
+                $timeoutHandler = app(\App\Services\TimeoutHandlerService::class);
+                $timeoutHandler->checkAndFillGaps($device, $period);
+            } catch (\Exception $e) {
+                \Log::error('Timeout handler failed: ' . $e->getMessage());
+            }
+
             NoiseRawData::create([
                 'device_id' => $device->id,
                 'period' => $period,
@@ -70,6 +97,9 @@ class TelemetryController extends Controller
                 'temperature' => $request->input('temperature'),
                 'humidity' => $request->input('humidity'),
                 'measured_at' => $telemetry->measured_at,
+                // Maps to same fill status as telemetry
+                'is_filled' => false,
+                'fill_method' => 'actual',
             ]);
             
             // Check if we have 120 data points
@@ -247,6 +277,8 @@ class TelemetryController extends Controller
                     'humidity' => $t->humidity,
                     'noise_db' => $t->noise_db,
                     'measured_at' => $t->measured_at->toIso8601String(),
+                    'is_filled' => (bool)$t->is_filled,
+                    'fill_method' => $t->fill_method,
                 ]),
             ],
             'errors' => null,

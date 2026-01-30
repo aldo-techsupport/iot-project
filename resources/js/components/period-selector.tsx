@@ -5,9 +5,10 @@ interface PeriodSelectorProps {
     selectedPeriod: 'L1' | 'L2' | 'L3' | 'L4';
     onChange: (period: 'L1' | 'L2' | 'L3' | 'L4') => void;
     dataCount?: Record<'L1' | 'L2' | 'L3' | 'L4', number>;
+    onPeriodDoubleClick?: (period: 'L1' | 'L2' | 'L3' | 'L4') => void;
 }
 
-export default function PeriodSelector({ selectedPeriod, onChange, dataCount }: PeriodSelectorProps) {
+export default function PeriodSelector({ selectedPeriod, onChange, dataCount, onPeriodDoubleClick }: PeriodSelectorProps) {
     const periods = [
         { value: 'L1', label: 'L1 (09:00)', subLabel: '08:00 - 10:00', targetRange: '09:00 - 09:10' },
         { value: 'L2', label: 'L2 (11:00)', subLabel: '10:00 - 12:00', targetRange: '11:00 - 11:10' },
@@ -39,11 +40,13 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount }: 
                         key={period.value}
                         type="button"
                         onClick={() => onChange(period.value)}
+                        onDoubleClick={() => onPeriodDoubleClick?.(period.value)}
                         className={cn(
-                            "relative flex flex-col items-center justify-center rounded-xl border p-3 transition-all hover:bg-muted/50",
+                            "relative flex flex-col items-center justify-center rounded-xl border p-3 transition-all hover:bg-muted/50 cursor-pointer",
                             isSelected && "border-primary bg-primary/5 ring-1 ring-primary",
                             !isSelected && "bg-card shadow-sm"
                         )}
+                        title="Double-click to view data details"
                     >
                         {isCurrent && (
                             <span className="absolute right-2 top-2 flex h-2 w-2">

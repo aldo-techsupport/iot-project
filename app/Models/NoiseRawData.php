@@ -15,6 +15,9 @@ class NoiseRawData extends Model
         'temperature',
         'humidity',
         'measured_at',
+        'is_filled',
+        'fill_method',
+        'consecutive_timeouts',
     ];
 
     protected $casts = [
@@ -22,6 +25,7 @@ class NoiseRawData extends Model
         'temperature' => 'float',
         'humidity' => 'float',
         'measured_at' => 'datetime',
+        'is_filled' => 'boolean',
     ];
 
     /**

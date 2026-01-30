@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
 import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
 import PeriodSelector from '@/components/period-selector';
+import TimeoutLogViewer from '@/components/iot/timeout-log-viewer';
 
 interface Device {
     id: number;
@@ -40,6 +41,7 @@ export default function NoiseMonitoringDashboard({ devices }: Props) {
         L4: 0,
     });
     const [loading, setLoading] = useState(false);
+    const [isDeviceOffline, setIsDeviceOffline] = useState(false);
 
     const fetchCalculations = async () => {
         try {
@@ -96,11 +98,15 @@ export default function NoiseMonitoringDashboard({ devices }: Props) {
             fetchCalculations();
             fetchDataCounts();
 
-            // Auto-refresh data counts every 10 seconds
-            const interval = setInterval(fetchDataCounts, 10000);
+            // Auto-refresh data counts every 30 seconds
+            const interval = setInterval(fetchDataCounts, 30000);
             return () => clearInterval(interval);
         }
     }, [selectedDevice, selectedDate]);
+
+    const handleStatusChange = (isOffline: boolean) => {
+        setIsDeviceOffline(isOffline);
+    };
 
     const currentCalculation = calculations.find((c) => c.period === selectedPeriod);
 
@@ -131,6 +137,25 @@ export default function NoiseMonitoringDashboard({ devices }: Props) {
 
             <div className="content">
                 <div className="container-fluid">
+                    {/* Offline Alert */}
+                    {isDeviceOffline && (
+                        <div className="row mb-3">
+                            <div className="col-12">
+                                <div className="alert alert-danger flex items-center gap-3 shadow-sm rounded-lg">
+                                    <div className="bg-white/20 p-2 rounded-full">
+                                        <i className="fas fa-exclamation-triangle text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h5 className="font-bold mb-0">Device Offline Detected</h5>
+                                        <p className="mb-0 text-sm opacity-90">
+                                            The device has stopped sending data. The system is auto-filling empty data points with zero to maintain calculation integrity.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Device & Date Selector */}
                     <div className="row mb-3">
                         <div className="col-md-6">
@@ -183,6 +208,13 @@ export default function NoiseMonitoringDashboard({ devices }: Props) {
                         </div>
                     </div>
 
+                    {/* Timeout Logs */}
+                    <div className="row mb-3">
+                        <div className="col-12">
+                            <TimeoutLogViewer deviceId={selectedDevice} date={selectedDate} />
+                        </div>
+                    </div>
+
                     {/* Real-Time Chart */}
                     <div className="row mb-3">
                         <div className="col-12">
@@ -191,6 +223,7 @@ export default function NoiseMonitoringDashboard({ devices }: Props) {
                                 period={selectedPeriod}
                                 date={selectedDate}
                                 autoRefresh={selectedDate === new Date().toISOString().split('T')[0]}
+                                onStatusChange={handleStatusChange}
                             />
                         </div>
                     </div>

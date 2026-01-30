@@ -56,5 +56,11 @@ Route::prefix('v1')->group(function () {
         
         // GET real-time noise data
         Route::get('/noise-data/realtime', [DashboardController::class, 'getRealTimeNoiseData']);
+
+        // GET timeout logs
+        Route::get('/timeout-logs', [DashboardController::class, 'getTimeoutLogs']);
+
+        // GET export noise data to Excel
+        Route::get('/noise-data/export', [DashboardController::class, 'exportNoiseData']);
     });
 });

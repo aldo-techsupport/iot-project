@@ -7,6 +7,8 @@ export interface TelemetryData {
 
 export interface TelemetryRecord extends TelemetryData {
     id: number;
+    is_filled?: boolean;
+    fill_method?: 'actual' | 'copied' | 'zero';
 }
 
 export interface DeviceSummary {

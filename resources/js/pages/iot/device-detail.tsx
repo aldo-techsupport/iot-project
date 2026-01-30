@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
 import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
 import PeriodSelector from '@/components/period-selector';
+import NoiseDataModal from '@/components/noise-data-modal';
 
 interface Props {
     device: DeviceDetail;
@@ -155,6 +156,10 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
         L1: 0, L2: 0, L3: 0, L4: 0,
     });
     const [loadingNoise, setLoadingNoise] = useState(false);
+
+    // Modal state
+    const [showDataModal, setShowDataModal] = useState(false);
+    const [modalPeriod, setModalPeriod] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L1');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -314,8 +319,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         <button
                             onClick={() => setActiveTab('overview')}
                             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'overview'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             <Activity className="h-4 w-4" />
@@ -324,8 +329,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         <button
                             onClick={() => setActiveTab('noise')}
                             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'noise'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             <BarChart3 className="h-4 w-4" />
@@ -406,6 +411,10 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 selectedPeriod={selectedPeriod}
                                 onChange={setSelectedPeriod}
                                 dataCount={dataCount}
+                                onPeriodDoubleClick={(period) => {
+                                    setModalPeriod(period);
+                                    setShowDataModal(true);
+                                }}
                             />
 
                             <NoiseStatisticsPanel calculation={currentCalculation || null} loading={loadingNoise} />
@@ -425,6 +434,15 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                     {autoRefresh && ' • Auto-refresh enabled'}
                 </p>
             </div>
+
+            <NoiseDataModal
+                open={showDataModal}
+                onClose={() => setShowDataModal(false)}
+                deviceId={device.id}
+                deviceName={device.name}
+                period={modalPeriod}
+                date={selectedDate}
+            />
         </AppLayout>
     );
 }

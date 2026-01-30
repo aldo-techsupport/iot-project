@@ -16,6 +16,8 @@ class Telemetry extends Model
         'humidity',
         'noise_db',
         'measured_at',
+        'is_filled',
+        'fill_method',
     ];
 
     protected function casts(): array
@@ -25,6 +27,7 @@ class Telemetry extends Model
             'humidity' => 'decimal:2',
             'noise_db' => 'decimal:2',
             'measured_at' => 'datetime',
+            'is_filled' => 'boolean',
         ];
     }
 

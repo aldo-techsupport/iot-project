@@ -11,6 +11,8 @@ class NoiseCalculation extends Model
         'period',
         'calculation_date',
         'data_count',
+        'total_collected',
+        'from_official_period',
         'min_value',
         'max_value',
         'average_value',
@@ -25,6 +27,8 @@ class NoiseCalculation extends Model
     protected $casts = [
         'calculation_date' => 'date',
         'data_count' => 'integer',
+        'total_collected' => 'integer',
+        'from_official_period' => 'integer',
         'min_value' => 'float',
         'max_value' => 'float',
         'average_value' => 'float',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NoiseDataPoint {
@@ -9,6 +9,8 @@ interface NoiseDataPoint {
     temperature: number;
     humidity: number;
     measured_at: string;
+    is_filled: boolean;
+    fill_method: 'actual' | 'copied' | 'zero';
 }
 
 interface RealTimeNoiseChartProps {
@@ -16,13 +18,15 @@ interface RealTimeNoiseChartProps {
     period: 'L1' | 'L2' | 'L3' | 'L4';
     date?: string;
     autoRefresh?: boolean;
+    onStatusChange?: (isOffline: boolean) => void;
 }
 
 export default function RealTimeNoiseChart({
     deviceId,
     period,
     date,
-    autoRefresh = true
+    autoRefresh = true,
+    onStatusChange
 }: RealTimeNoiseChartProps) {
     const [data, setData] = useState<NoiseDataPoint[]>([]);
     const [loading, setLoading] = useState(false);
@@ -44,7 +48,16 @@ export default function RealTimeNoiseChart({
             const result = await response.json();
 
             if (result.success) {
-                setData(result.data);
+                const newData = result.data;
+                setData(newData);
+
+                // Detection logic for offline status
+                // If last 12 points (1 minute) are all zero-filled, consider offline
+                if (newData.length > 0 && onStatusChange) {
+                    const recentPoints = newData.slice(-12); // Last 12 points
+                    const isOffline = recentPoints.length >= 12 && recentPoints.every((p: any) => p.fill_method === 'zero');
+                    onStatusChange(isOffline);
+                }
             } else {
                 setError('Failed to load data');
             }
@@ -83,8 +96,67 @@ export default function RealTimeNoiseChart({
             dB: point.noise_level,
             temp: point.temperature,
             humidity: point.humidity,
+            isFilled: point.is_filled,
+            fillMethod: point.fill_method,
         };
     });
+
+    const CustomDot = (props: any) => {
+        const { cx, cy, payload } = props;
+        if (!payload.isFilled) return null; // Don't show dots for actual data to keep chart clean
+
+        const color = payload.fillMethod === 'zero' ? '#ef4444' : '#eab308'; // Red for zero, Yellow for copied
+
+        return (
+            <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={1} />
+        );
+    };
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (!active || !payload || !payload.length) return null;
+
+        const data = payload[0].payload;
+
+        return (
+            <div className="rounded-lg border bg-popover p-2 shadow-sm">
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col">
+                        <span className="text-[0.70rem] uppercase text-muted-foreground">
+                            Time
+                        </span>
+                        <span className="font-bold text-muted-foreground">
+                            {label}
+                        </span>
+                    </div>
+                    {data.isFilled && (
+                        <div className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                Status
+                            </span>
+                            <span className={cn(
+                                "font-bold",
+                                data.fillMethod === 'zero' ? "text-red-500" : "text-yellow-500"
+                            )}>
+                                {data.fillMethod === 'zero' ? 'Filled (Zero)' : 'Failed To Fetch Data'}
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 border-t pt-2">
+                    {payload.map((entry: any, index: number) => (
+                        <div key={index} className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                {entry.name}
+                            </span>
+                            <span className="font-bold" style={{ color: entry.color }}>
+                                {entry.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm h-full flex flex-col">
@@ -129,7 +201,7 @@ export default function RealTimeNoiseChart({
                 {!loading && data.length === 0 && !error && (
                     <div className="flex h-full flex-col items-center justify-center py-10 text-muted-foreground">
                         <div className="rounded-full bg-muted p-4 mb-3">
-                            <ActivityIcon className="h-8 w-8 opacity-50" />
+                            <Activity className="h-8 w-8 opacity-50" />
                         </div>
                         <p>No data available for {period}</p>
                         <p className="text-xs mt-1">Measurements appear here automatically</p>
@@ -163,17 +235,7 @@ export default function RealTimeNoiseChart({
                                 tickLine={false}
                                 axisLine={false}
                             />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: "hsl(var(--popover))",
-                                    borderColor: "hsl(var(--border))",
-                                    borderRadius: "var(--radius)",
-                                    color: "hsl(var(--popover-foreground))",
-                                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                                }}
-                                itemStyle={{ color: "hsl(var(--foreground))" }}
-                                labelStyle={{ color: "hsl(var(--muted-foreground))", marginBottom: "0.25rem" }}
-                            />
+                            <Tooltip content={<CustomTooltip />} />
                             <Legend wrapperStyle={{ paddingTop: "1rem" }} />
                             <Line
                                 yAxisId="left"
@@ -181,8 +243,8 @@ export default function RealTimeNoiseChart({
                                 dataKey="dB"
                                 stroke="#8b5cf6" // Purple
                                 strokeWidth={2}
-                                dot={false}
-                                activeDot={{ r: 4, strokeWidth: 0 }}
+                                dot={<CustomDot />}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
                                 name="Noise Level (dB)"
                                 animationDuration={1000}
                             />
@@ -212,23 +274,4 @@ export default function RealTimeNoiseChart({
             </div>
         </div>
     );
-}
-
-function ActivityIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-        </svg>
-    )
 }

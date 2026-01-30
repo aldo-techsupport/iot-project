@@ -145,7 +145,19 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
                                     ) : (
                                         telemetries.data.map((t) => (
                                             <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
-                                                <td className="px-4 py-3 text-sm">{formatDateTime(t.measured_at)}</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <div className="flex flex-col">
+                                                        <span>{formatDateTime(t.measured_at)}</span>
+                                                        {t.is_filled && (
+                                                            <span className={`mt-1 inline-flex w-fit items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase leading-none ${t.fill_method === 'zero'
+                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                }`}>
+                                                                TIMEOUT {t.fill_method === 'zero' ? '(OFFLINE)' : '(AUTO-FILLED)'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="px-4 py-3 text-right text-sm font-mono">{t.temperature}°C</td>
                                                 <td className="px-4 py-3 text-right text-sm font-mono">{t.humidity}%</td>
                                                 <td className="px-4 py-3 text-right text-sm font-mono">{t.noise_db} dB</td>
