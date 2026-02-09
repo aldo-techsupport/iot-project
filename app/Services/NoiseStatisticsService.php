@@ -213,7 +213,7 @@ class NoiseStatisticsService
 
     /**
      * Calculate Ls (Leq Siang - Daytime Average Noise Level)
-     * Formula: Ls = 10 × log10(1/16 × Σ(Ti × 10^(0.1×Li)))
+     * Formula: Ls = 10 × log10(1/8 × Σ(Ti × 10^(0.1×Li)))
      * 
      * @param array $periodData Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 2]
      * @return float Ls value in dB
@@ -221,7 +221,7 @@ class NoiseStatisticsService
     public function calculateLs(array $periodData): float
     {
         $sum = 0;
-        $totalHours = 16; // Total daytime hours (16 jam kerja)
+        $totalHours = 8; // Total daytime hours (8 jam kerja)
         
         foreach ($periodData as $data) {
             $Ti = $data['duration_hours'];
@@ -231,10 +231,55 @@ class NoiseStatisticsService
             $sum += $Ti * pow(10, 0.1 * $Li);
         }
         
-        // Calculate: 10 × log10(1/16 × sum)
+        // Calculate: 10 × log10(1/8 × sum)
         $ls = 10 * log10((1 / $totalHours) * $sum);
         
         return round($ls, 2);
+    }
+
+    /**
+     * Calculate allowable exposure time using NIOSH formula
+     * Formula: T = 480 / 2^((L-85)/3)
+     * 
+     * Note: Formula menggunakan 480 menit sebagai reference time untuk 85 dBA
+     *       Hasil dalam menit, kemudian dikonversi ke jam
+     * 
+     * @param float $noiseLevel Noise level in dB
+     * @return float Allowable exposure time in hours
+     */
+    public function calculateAllowableTime(float $noiseLevel): float
+    {
+        // T = 480 / 2^((L-85)/3)
+        // 480 minutes = reference time for 85 dBA (8 hours)
+        // 3 = exchange rate (every 3 dB increase, time is halved)
+        $exponent = ($noiseLevel - 85) / 3;
+        $allowableTimeMinutes = 480 / pow(2, $exponent);
+        
+        // Convert to hours
+        $allowableTimeHours = $allowableTimeMinutes / 60;
+        
+        return $allowableTimeHours;
+    }
+
+    /**
+     * Calculate DND (Daily Noise Dose) using NIOSH method
+     * Formula: D(%) = (C/T) × 100%
+     * 
+     * @param float $noiseLevel Average noise level (Ls) in dB
+     * @param float $exposureTime Actual exposure time in hours (default: 8)
+     * @return float DND value in percentage
+     */
+    public function calculateDND(float $noiseLevel, float $exposureTime = 8): float
+    {
+        // Calculate allowable time for this noise level
+        $allowableTime = $this->calculateAllowableTime($noiseLevel);
+        
+        // Calculate DND: D(%) = (C/T) × 100%
+        // C = actual exposure time
+        // T = allowable exposure time
+        $dnd = ($exposureTime / $allowableTime) * 100;
+        
+        return round($dnd, 2);
     }
 
     /**

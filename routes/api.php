@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\TelemetryController;
+use App\Http\Controllers\Api\V1\ThiController;
 use App\Http\Controllers\IoT\DashboardController;
 use App\Http\Middleware\AuthenticateDevice;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,12 @@ Route::prefix('v1')->group(function () {
         // GET noise calculations
         Route::get('/noise-calculations', [DashboardController::class, 'getNoiseCalculations']);
         
+        // GET daily summary
+        Route::get('/daily-summary', [DashboardController::class, 'getDailySummary']);
+        
+        // GET export daily summary to Excel
+        Route::get('/daily-summary/export', [DashboardController::class, 'exportDailySummary']);
+        
         // GET real-time noise data
         Route::get('/noise-data/realtime', [DashboardController::class, 'getRealTimeNoiseData']);
 
@@ -62,5 +69,8 @@ Route::prefix('v1')->group(function () {
 
         // GET export noise data to Excel
         Route::get('/noise-data/export', [DashboardController::class, 'exportNoiseData']);
+
+        // GET THI data
+        Route::get('/thi', [ThiController::class, 'getThiByDate']);
     });
 });

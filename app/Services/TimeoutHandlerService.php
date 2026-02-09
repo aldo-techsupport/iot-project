@@ -91,14 +91,14 @@ class TimeoutHandlerService
 
     /**
      * Get start and end times for a period today
-     * Note: Actual collection starts 3 minutes early and ends 3 minutes late
-     * to ensure we can collect enough data points (buffer strategy)
+     * Note: Uses exact official times starting at 00 seconds
+     * Example: L1 starts at 09:00:00, data collected at 09:00:00, 09:00:05, 09:00:10, etc.
      */
     private function getPeriodDates(string $period): ?array
     {
         $date = now()->toDateString();
         
-        // Official period times (for display)
+        // Official period times - exact timing at 00 seconds
         $officialTimes = [
             'L1' => ['start' => '09:00:00', 'end' => '09:10:00'],
             'L2' => ['start' => '11:00:00', 'end' => '11:10:00'],
@@ -108,17 +108,16 @@ class TimeoutHandlerService
 
         if (!isset($officialTimes[$period])) return null;
 
-        // Add 3-minute buffer before and after
-        // This allows collection from 08:57-09:13 for L1, etc.
-        // Total: 16 minutes = up to 192 data points (5s interval)
-        $startTime = Carbon::parse("$date {$officialTimes[$period]['start']}")->subMinutes(3);
-        $endTime = Carbon::parse("$date {$officialTimes[$period]['end']}")->addMinutes(3);
+        // Use exact official times without buffer
+        // Data selection will handle timeouts by finding closest available data
+        $startTime = Carbon::parse("$date {$officialTimes[$period]['start']}");
+        $endTime = Carbon::parse("$date {$officialTimes[$period]['end']}");
 
         return [
             'start' => $startTime,
             'end' => $endTime,
-            'official_start' => Carbon::parse("$date {$officialTimes[$period]['start']}"),
-            'official_end' => Carbon::parse("$date {$officialTimes[$period]['end']}"),
+            'official_start' => $startTime->copy(),
+            'official_end' => $endTime->copy(),
         ];
     }
 }

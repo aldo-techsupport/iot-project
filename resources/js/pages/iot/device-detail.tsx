@@ -3,12 +3,17 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ChartDataPoint, type DeviceDetail } from '@/types/iot';
 import { Head, Link, router } from '@inertiajs/react';
-import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3 } from 'lucide-react';
+import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
+import RealTimeTelemetryChart from '@/components/charts/real-time-telemetry-chart';
+import TelemetrySvgChart from '@/components/charts/telemetry-svg-chart';
+import NoiseSvgChart from '@/components/charts/noise-svg-chart';
+import ThiChart from '@/components/charts/thi-chart';
 import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
 import PeriodSelector from '@/components/period-selector';
 import NoiseDataModal from '@/components/noise-data-modal';
+import DailyReportPanel from '@/components/daily-report-panel';
 
 interface Props {
     device: DeviceDetail;
@@ -143,7 +148,9 @@ function SimpleLineChart({ data, dataKey, color, label }: { data: ChartDataPoint
 }
 
 export default function DeviceDetailPage({ device, chartData }: Props) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'noise'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily'>('overview');
+    const [overviewViewMode, setOverviewViewMode] = useState<'recharts' | 'svg'>('recharts');
+    const [noiseViewMode, setNoiseViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -151,6 +158,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
     // Noise Dashboard State
     const [selectedPeriod, setSelectedPeriod] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L1');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedThiDate, setSelectedThiDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [thiViewMode, setThiViewMode] = useState<'data' | 'chart'>('data');
     const [calculations, setCalculations] = useState<NoiseCalculation[]>([]);
     const [dataCount, setDataCount] = useState<Record<'L1' | 'L2' | 'L3' | 'L4', number>>({
         L1: 0, L2: 0, L3: 0, L4: 0,
@@ -234,7 +243,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
             }
         }, REFRESH_INTERVAL);
         return () => clearInterval(interval);
-    }, [autoRefresh, activeTab]);
+    }, [autoRefresh, activeTab, selectedDate]);
 
     useEffect(() => {
         if (activeTab === 'noise') {
@@ -336,6 +345,26 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             <BarChart3 className="h-4 w-4" />
                             Noise Analysis
                         </button>
+                        <button
+                            onClick={() => setActiveTab('thi')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'thi'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <Gauge className="h-4 w-4" />
+                            THI
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('daily')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'daily'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <FileText className="h-4 w-4" />
+                            Daily Report
+                        </button>
                     </div>
                 </div>
 
@@ -375,25 +404,51 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             />
                         </div>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>24-Hour Trends</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid gap-6 md:grid-cols-3">
-                                    <SimpleLineChart data={chartData} dataKey="temperature" color="#f97316" label="Temperature (°C)" />
-                                    <SimpleLineChart data={chartData} dataKey="humidity" color="#3b82f6" label="Humidity (%)" />
-                                    <SimpleLineChart data={chartData} dataKey="noise_db" color="#a855f7" label="Noise (dB)" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        {/* Sub-tabs for Chart Type */}
+                        <div className="flex justify-end">
+                            <div className="flex gap-2 border rounded-lg p-1">
+                                <button
+                                    onClick={() => setOverviewViewMode('recharts')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        overviewViewMode === 'recharts'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Interactive Chart
+                                </button>
+                                <button
+                                    onClick={() => setOverviewViewMode('svg')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        overviewViewMode === 'svg'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Detailed Chart
+                                </button>
+                            </div>
+                        </div>
+
+                        {overviewViewMode === 'recharts' ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>24-Hour Trends</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <RealTimeTelemetryChart data={chartData} />
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <TelemetrySvgChart data={chartData} />
+                        )}
                     </div>
                 )}
 
                 {/* Tab Content: Noise Analysis */}
                 {activeTab === 'noise' && (
                     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
                             <div className="flex items-center gap-2">
                                 <label className="text-sm font-medium">Date:</label>
                                 <input
@@ -403,6 +458,30 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                     onChange={(e) => setSelectedDate(e.target.value)}
                                     max={new Date().toISOString().split('T')[0]}
                                 />
+                            </div>
+
+                            {/* Sub-tabs for Chart Type */}
+                            <div className="flex gap-2 border rounded-lg p-1">
+                                <button
+                                    onClick={() => setNoiseViewMode('recharts')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        noiseViewMode === 'recharts'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Interactive Chart
+                                </button>
+                                <button
+                                    onClick={() => setNoiseViewMode('svg')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        noiseViewMode === 'svg'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Detailed Chart
+                                </button>
                             </div>
                         </div>
 
@@ -419,13 +498,93 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
 
                             <NoiseStatisticsPanel calculation={currentCalculation || null} loading={loadingNoise} />
 
-                            <RealTimeNoiseChart
-                                deviceId={device.id}
-                                period={selectedPeriod}
-                                date={selectedDate}
-                                autoRefresh={selectedDate === new Date().toISOString().split('T')[0] && autoRefresh}
+                            {noiseViewMode === 'recharts' ? (
+                                <RealTimeNoiseChart
+                                    deviceId={device.id}
+                                    period={selectedPeriod}
+                                    date={selectedDate}
+                                    autoRefresh={selectedDate === new Date().toISOString().split('T')[0] && autoRefresh}
+                                />
+                            ) : (
+                                <NoiseSvgChart
+                                    deviceId={device.id}
+                                    period={selectedPeriod}
+                                    date={selectedDate}
+                                    autoRefresh={selectedDate === new Date().toISOString().split('T')[0] && autoRefresh}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Tab Content: THI */}
+                {activeTab === 'thi' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm font-medium">Date:</label>
+                                <input
+                                    type="date"
+                                    className="rounded-md border p-1 text-sm"
+                                    value={selectedThiDate}
+                                    onChange={(e) => setSelectedThiDate(e.target.value)}
+                                    max={new Date().toISOString().split('T')[0]}
+                                />
+                            </div>
+
+                            {/* Sub-tabs for Data/Chart */}
+                            <div className="flex gap-2 border rounded-lg p-1">
+                                <button
+                                    onClick={() => setThiViewMode('data')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        thiViewMode === 'data'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Data
+                                </button>
+                                <button
+                                    onClick={() => setThiViewMode('chart')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                        thiViewMode === 'chart'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Grafik
+                                </button>
+                            </div>
+                        </div>
+
+                        <ThiChart 
+                            deviceId={device.id} 
+                            date={selectedThiDate}
+                            autoRefresh={selectedThiDate === new Date().toISOString().split('T')[0] && autoRefresh}
+                            viewMode={thiViewMode}
+                        />
+                    </div>
+                )}
+
+                {/* Tab Content: Daily Report */}
+                {activeTab === 'daily' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium">Date:</label>
+                            <input
+                                type="date"
+                                className="rounded-md border p-1 text-sm"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                max={new Date().toISOString().split('T')[0]}
                             />
                         </div>
+
+                        <DailyReportPanel 
+                            deviceId={device.id} 
+                            date={selectedDate}
+                            loading={loadingNoise}
+                        />
                     </div>
                 )}
 

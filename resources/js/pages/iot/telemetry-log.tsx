@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DateTimePicker24hForm } from '@/components/ui/date-time-picker-24h';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type PaginatedTelemetry, type TelemetryFilters } from '@/types/iot';
@@ -30,8 +30,13 @@ function formatDateTime(dateString: string): string {
 }
 
 export default function TelemetryLog({ device, telemetries, filters }: Props) {
-    const [fromDate, setFromDate] = useState(filters.from || '');
-    const [toDate, setToDate] = useState(filters.to || '');
+    // Parse initial filters into Date objects
+    const [fromDate, setFromDate] = useState<Date | undefined>(
+        filters.from ? new Date(filters.from) : undefined
+    );
+    const [toDate, setToDate] = useState<Date | undefined>(
+        filters.to ? new Date(filters.to) : undefined
+    );
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -40,10 +45,20 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
         { title: 'Log', href: `/iot/devices/${device.id}/log` },
     ];
 
+    const formatDateTimeForAPI = (date: Date | undefined) => {
+        if (!date) return undefined;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:00`;
+    };
+
     const handleFilter = () => {
         router.get(`/iot/devices/${device.id}/log`, {
-            from: fromDate || undefined,
-            to: toDate || undefined,
+            from: formatDateTimeForAPI(fromDate),
+            to: formatDateTimeForAPI(toDate),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -52,7 +67,10 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
 
     const handlePageChange = (url: string | null) => {
         if (url) {
-            router.get(url, {}, { preserveState: true, preserveScroll: true });
+            router.get(url, {
+                from: formatDateTimeForAPI(fromDate),
+                to: formatDateTimeForAPI(toDate),
+            }, { preserveState: true, preserveScroll: true });
         }
     };
 
@@ -76,33 +94,29 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base">Filter by Date</CardTitle>
+                        <CardTitle className="text-base">Filter by Date & Time</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-wrap items-end gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end">
                             <div className="grid gap-2">
-                                <Label htmlFor="from">From</Label>
-                                <Input
-                                    id="from"
-                                    type="datetime-local"
-                                    value={fromDate}
-                                    onChange={(e) => setFromDate(e.target.value)}
-                                    className="w-auto"
+                                <Label>From</Label>
+                                <DateTimePicker24hForm
+                                    date={fromDate}
+                                    setDate={setFromDate}
+                                    placeholder="Select start date & time"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="to">To</Label>
-                                <Input
-                                    id="to"
-                                    type="datetime-local"
-                                    value={toDate}
-                                    onChange={(e) => setToDate(e.target.value)}
-                                    className="w-auto"
+                                <Label>To</Label>
+                                <DateTimePicker24hForm
+                                    date={toDate}
+                                    setDate={setToDate}
+                                    placeholder="Select end date & time"
                                 />
                             </div>
                             <button
                                 onClick={handleFilter}
-                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 h-10"
                             >
                                 <Search className="h-4 w-4" />
                                 Filter
@@ -110,11 +124,11 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
                             {(fromDate || toDate) && (
                                 <button
                                     onClick={() => {
-                                        setFromDate('');
-                                        setToDate('');
+                                        setFromDate(undefined);
+                                        setToDate(undefined);
                                         router.get(`/iot/devices/${device.id}/log`);
                                     }}
-                                    className="text-sm text-muted-foreground hover:text-foreground"
+                                    className="text-sm text-muted-foreground hover:text-foreground h-10"
                                 >
                                     Clear
                                 </button>
@@ -150,8 +164,8 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
                                                         <span>{formatDateTime(t.measured_at)}</span>
                                                         {t.is_filled && (
                                                             <span className={`mt-1 inline-flex w-fit items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase leading-none ${t.fill_method === 'zero'
-                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                                                 }`}>
                                                                 TIMEOUT {t.fill_method === 'zero' ? '(OFFLINE)' : '(AUTO-FILLED)'}
                                                             </span>

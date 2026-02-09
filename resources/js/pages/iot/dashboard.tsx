@@ -123,11 +123,14 @@ function AddDeviceModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClo
         e.preventDefault();
         post('/iot/devices', {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: (page) => {
                 const props = page.props as unknown as Props;
                 reset();
-                onClose();
-                if (props.newDevice) onSuccess(props.newDevice);
+                if (props.newDevice) {
+                    onSuccess(props.newDevice);
+                    onClose();
+                }
             },
         });
     };

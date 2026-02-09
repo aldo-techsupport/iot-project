@@ -28,7 +28,7 @@ class DeviceController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->route('iot.dashboard')
+        return redirect()->back()
             ->with('newDevice', [
                 'id' => $device->id,
                 'name' => $device->name,

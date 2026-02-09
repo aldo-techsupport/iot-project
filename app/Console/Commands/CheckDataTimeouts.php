@@ -33,8 +33,8 @@ class CheckDataTimeouts extends Command
     {
         $now = now();
         
-        // Official period times (for display and period detection)
-        // Backend collection actually uses 3-min buffer (handled in TimeoutHandlerService)
+        // Official period times - exact timing starting at 00 seconds
+        // Data collection uses these exact times with tolerance for finding closest data
         $periods = [
             'L1' => ['start' => '09:00', 'end' => '09:10'],
             'L2' => ['start' => '11:00', 'end' => '11:10'],

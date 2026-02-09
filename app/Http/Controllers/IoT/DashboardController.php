@@ -253,13 +253,17 @@ class DashboardController extends Controller
             ->inDateRange($request->input('from'), $request->input('to'))
             ->orderBy('measured_at', 'desc');
 
-        $telemetries = $query->paginate(50)->through(fn($t) => [
-            'id' => $t->id,
-            'temperature' => $t->temperature,
-            'humidity' => $t->humidity,
-            'noise_db' => $t->noise_db,
-            'measured_at' => $t->measured_at->toIso8601String(),
-        ]);
+        $telemetries = $query->paginate(50)
+            ->appends($request->only(['from', 'to']))
+            ->through(fn($t) => [
+                'id' => $t->id,
+                'temperature' => $t->temperature,
+                'humidity' => $t->humidity,
+                'noise_db' => $t->noise_db,
+                'measured_at' => $t->measured_at->toIso8601String(),
+                'is_filled' => $t->is_filled ?? false,
+                'fill_method' => $t->fill_method ?? null,
+            ]);
 
         return Inertia::render('iot/telemetry-log', [
             'device' => [
@@ -396,16 +400,16 @@ class DashboardController extends Controller
             $officialEnd
         );
 
-        // Get total telemetry data collected (including 1-minute extended period)
-        $extendedStart = $officialStart->copy()->subMinute();
+        // Get total telemetry data collected from official period only
+        // (no buffer, consistent with new timing strategy)
         $totalCollected = \App\Models\Telemetry::where('device_id', $validated['device_id'])
             ->whereDate('measured_at', $date)
-            ->whereBetween('measured_at', [$extendedStart, $officialEnd])
+            ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
             ->where('is_filled', false)
             ->count();
         
-        // Count how many are from official period
-        $fromOfficial = $selectedData->filter(fn($d) => $d->measured_at->gte($officialStart))->count();
+        // All selected data are from official period (with tolerance for closest match)
+        $fromOfficial = $selectedData->count();
 
         // Format response - map telemetry fields to noise data format
         $formattedData = $selectedData->map(fn($d) => [
@@ -563,12 +567,12 @@ class DashboardController extends Controller
         }
         
         // Prepare data for Ls calculation
-        // Based on research: L1=2h, L2=2h, L3=4h, L4=5h (total 13h, but using 16h standard)
+        // Based on 8 hours work day: L1=2h, L2=2h, L3=2h, L4=2h (total 8h)
         $periodData = [
             ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 2],
             ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 2],
-            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 4],
-            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 5],
+            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 2],
+            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 2],
         ];
         
         $statsService = new NoiseStatisticsService();
@@ -576,13 +580,18 @@ class DashboardController extends Controller
         // Calculate Ls (Leq Siang)
         $ls = $statsService->calculateLs($periodData);
         
-        // Calculate DND (Dosis Harian)
-        // Note: This is a simplified calculation. 
-        // Proper DND calculation requires exposure time and reference level (85 dBA for 8 hours)
-        // For now, we'll use a simplified approach based on Ls
-        $dnd = 100; // Placeholder - needs proper implementation based on exposure standards
+        // Calculate allowable time (T) using NIOSH formula
+        // Formula: T = 8 / 2^((L-85)/3)
+        $allowableTime = $statsService->calculateAllowableTime($ls);
         
-        // Calculate TWA
+        // Calculate DND (Daily Noise Dose) using NIOSH method
+        // Formula: D(%) = (C/T) × 100%
+        // Where T = 8 / 2^((L-85)/3)
+        $exposureTime = 8; // 8 hours work day
+        $dnd = $statsService->calculateDND($ls, $exposureTime);
+        
+        // Calculate TWA (Time Weighted Average)
+        // Formula: TWA = 10 × log(DND/100) + 85
         $twa = $statsService->calculateTWA($dnd);
         
         // Store daily summary
@@ -595,6 +604,7 @@ class DashboardController extends Controller
                 'ls_value' => $ls,
                 'twa_value' => $twa,
                 'dnd_value' => $dnd,
+                'allowable_time' => $allowableTime,
                 'l1_leq' => $periodData[0]['leq'],
                 'l2_leq' => $periodData[1]['leq'],
                 'l3_leq' => $periodData[2]['leq'],
@@ -607,11 +617,92 @@ class DashboardController extends Controller
             'data' => $summary,
             'calculation_details' => [
                 'periods' => $periodData,
-                'ls_formula' => '10 × log10(1/16 × Σ(Ti × 10^(0.1×Li)))',
+                'ls_formula' => '10 × log10(1/8 × Σ(Ti × 10^(0.1×Li)))',
+                'dnd_formula' => 'D(%) = (C/T) × 100%, where T = 8 / 2^((L-85)/3)',
                 'twa_formula' => '10 × log(DND/100) + 85',
+                'exposure_time' => $exposureTime . ' hours',
+                'reference_level' => '85 dBA (NIOSH standard)',
             ],
         ]);
     }
+
+    /**
+     * Get daily summary for a device and date
+     * GET /api/v1/iot/daily-summary
+     */
+    public function getDailySummary(Request $request)
+    {
+        $validated = $request->validate([
+            'device_id' => ['required', 'exists:devices,id'],
+            'date' => ['nullable', 'date'],
+        ]);
+        
+        $deviceId = $validated['device_id'];
+        $date = $validated['date'] ?? now()->toDateString();
+        
+        // Get daily summary
+        $summary = NoiseDailySummary::where('device_id', $deviceId)
+            ->whereDate('calculation_date', $date)
+            ->first();
+        
+        if (!$summary) {
+            // Try to calculate if all periods are available
+            $calculations = NoiseCalculation::where('device_id', $deviceId)
+                ->whereDate('calculation_date', $date)
+                ->get();
+            
+            if ($calculations->count() === 4) {
+                // Auto-calculate
+                $calcRequest = new Request([
+                    'device_id' => $deviceId,
+                    'date' => $date,
+                ]);
+                $response = $this->calculateDailySummary($calcRequest);
+                $responseData = $response->getData(true);
+                
+                if ($responseData['success']) {
+                    $summary = $responseData['data'];
+                }
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $summary,
+        ]);
+    }
+
+    /**
+     * Export daily summary to Excel
+     * GET /api/v1/iot/daily-summary/export
+     */
+    public function exportDailySummary(Request $request)
+    {
+        $validated = $request->validate([
+            'device_id' => ['required', 'exists:devices,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        $device = Device::find($validated['device_id']);
+        $startDate = $validated['start_date'];
+        $endDate = $validated['end_date'] ?? $startDate;
+
+        $filename = $startDate === $endDate
+            ? "Daily_Report_{$device->slug}_{$startDate}.xlsx"
+            : "Daily_Report_{$device->slug}_{$startDate}_to_{$endDate}.xlsx";
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\DailySummaryExport(
+                $validated['device_id'],
+                $startDate,
+                $endDate,
+                $device->name
+            ),
+            $filename
+        );
+    }
+
     /**
      * Get timeout logs for a device and date
      * GET /api/iot/timeout-logs
