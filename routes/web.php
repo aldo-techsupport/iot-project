@@ -25,6 +25,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/devices/{device}', [DeviceController::class, 'destroy'])->name('device.destroy');
         Route::post('/devices/{device}/regenerate-key', [DeviceController::class, 'regenerateKey'])->name('device.regenerateKey');
         Route::get('/devices/{device}/log', [DashboardController::class, 'telemetryLog'])->name('device.log');
+        
+        // Device Telegram Settings
+        Route::put('/devices/{device}/telegram', [\App\Http\Controllers\IoT\DeviceTelegramController::class, 'update'])->name('device.telegram.update');
+        Route::post('/devices/{device}/telegram/test', [\App\Http\Controllers\IoT\DeviceTelegramController::class, 'test'])->name('device.telegram.test');
+        
+        // Device WhatsApp Settings
+        Route::put('/devices/{device}/whatsapp', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'update'])->name('device.whatsapp.update');
+        Route::post('/devices/{device}/whatsapp/add', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'addNumber'])->name('device.whatsapp.add');
+        Route::post('/devices/{device}/whatsapp/delete', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'deleteNumber'])->name('device.whatsapp.delete');
+        Route::post('/devices/{device}/whatsapp/test', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'test'])->name('device.whatsapp.test');
+        Route::post('/devices/{device}/whatsapp/test-number', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'testNumber'])->name('device.whatsapp.test-number');
     });
 });
 

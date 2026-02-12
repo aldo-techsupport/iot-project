@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ChartDataPoint, type DeviceDetail } from '@/types/iot';
 import { Head, Link, router } from '@inertiajs/react';
-import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText } from 'lucide-react';
+import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText, MessageSquare, MessageCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
 import RealTimeTelemetryChart from '@/components/charts/real-time-telemetry-chart';
@@ -14,6 +14,8 @@ import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
 import PeriodSelector from '@/components/period-selector';
 import NoiseDataModal from '@/components/noise-data-modal';
 import DailyReportPanel from '@/components/daily-report-panel';
+import DeviceTelegramSettings from '@/components/device-telegram-settings';
+import DeviceWhatsAppSettings from '@/components/device-whatsapp-settings';
 
 interface Props {
     device: DeviceDetail;
@@ -148,7 +150,7 @@ function SimpleLineChart({ data, dataKey, color, label }: { data: ChartDataPoint
 }
 
 export default function DeviceDetailPage({ device, chartData }: Props) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily' | 'telegram' | 'whatsapp'>('overview');
     const [overviewViewMode, setOverviewViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [noiseViewMode, setNoiseViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -364,6 +366,26 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         >
                             <FileText className="h-4 w-4" />
                             Daily Report
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('telegram')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'telegram'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <MessageSquare className="h-4 w-4" />
+                            Telegram
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('whatsapp')}
+                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'whatsapp'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp
                         </button>
                     </div>
                 </div>
@@ -585,6 +607,20 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             date={selectedDate}
                             loading={loadingNoise}
                         />
+                    </div>
+                )}
+
+                {/* Tab Content: Telegram */}
+                {activeTab === 'telegram' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <DeviceTelegramSettings device={device} />
+                    </div>
+                )}
+
+                {/* Tab Content: WhatsApp */}
+                {activeTab === 'whatsapp' && (
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+                        <DeviceWhatsAppSettings device={device} />
                     </div>
                 )}
 

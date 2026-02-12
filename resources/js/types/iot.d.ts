@@ -25,6 +25,11 @@ export interface DeviceSummary {
 
 export interface DeviceDetail extends DeviceSummary {
     description: string | null;
+    telegram_bot_token: string | null;
+    telegram_chat_id: string | null;
+    telegram_enabled: boolean;
+    whatsapp_numbers: string[] | null;
+    whatsapp_enabled: boolean;
 }
 
 export interface ChartDataPoint {

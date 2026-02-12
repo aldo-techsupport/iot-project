@@ -23,6 +23,12 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('settings/appearance');
     })->name('appearance.edit');
 
+    Route::get('settings/telegram', [\App\Http\Controllers\Settings\TelegramController::class, 'edit'])
+        ->name('telegram.edit');
+    
+    Route::post('settings/telegram/test', [\App\Http\Controllers\Settings\TelegramController::class, 'test'])
+        ->name('telegram.test');
+
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
 });

@@ -14,6 +14,7 @@ class Telemetry extends Model
         'device_id',
         'temperature',
         'humidity',
+        'thi',
         'noise_db',
         'measured_at',
         'is_filled',
@@ -25,10 +26,26 @@ class Telemetry extends Model
         return [
             'temperature' => 'decimal:2',
             'humidity' => 'decimal:2',
+            'thi' => 'decimal:2',
             'noise_db' => 'decimal:2',
             'measured_at' => 'datetime',
             'is_filled' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function ($telemetry) {
+            if ($telemetry->temperature && $telemetry->humidity && !$telemetry->thi) {
+                $telemetry->thi = (0.8 * $telemetry->temperature) + (($telemetry->humidity * $telemetry->temperature) / 500);
+            }
+        });
+
+        static::updating(function ($telemetry) {
+            if ($telemetry->isDirty(['temperature', 'humidity'])) {
+                $telemetry->thi = (0.8 * $telemetry->temperature) + (($telemetry->humidity * $telemetry->temperature) / 500);
+            }
+        });
     }
 
     public function device(): BelongsTo

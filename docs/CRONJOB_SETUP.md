@@ -202,6 +202,43 @@ Schedule::command('backup:calculations')
     ->timezone('Asia/Jakarta');
 ```
 
+## Telegram Alert System
+
+### Setup Alert Cronjob
+
+Tambahkan schedule untuk Telegram alert di `routes/console.php`:
+
+```php
+// Send Telegram alerts every 5 minutes
+Schedule::command('telegram:send-alert')
+    ->everyFiveMinutes()
+    ->timezone('Asia/Jakarta');
+```
+
+### Alert Types
+
+Sistem akan mengirim alert otomatis berdasarkan kondisi:
+
+1. **THI > 29** - Peringatan suhu panas
+2. **dB > 85** - Peringatan kebisingan
+3. **dB > 85 & THI > 29** - Peringatan kritis
+4. **dB > 100** - Bahaya kebisingan tinggi
+5. **dB > 100 & THI > 29** - Kondisi darurat
+
+### Test Alert
+
+```bash
+php artisan telegram:send-alert
+```
+
+### Log Alert
+
+```bash
+tail -n 50 storage/logs/telegram-alert.log
+```
+
+Lihat dokumentasi lengkap di `docs/TELEGRAM_ALERT_SYSTEM.md`
+
 ## Summary
 
 ✅ **Setup sekali** - Hanya perlu 1 cronjob di aaPanel
@@ -209,3 +246,4 @@ Schedule::command('backup:calculations')
 ✅ **Per periode** - Trigger 1 menit setelah periode selesai
 ✅ **Logging** - Semua hasil tersimpan di log
 ✅ **Monitoring** - Mudah cek status dan hasil
+✅ **Alert System** - Notifikasi Telegram berbasis kondisi

@@ -249,7 +249,7 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground mb-1">
-                                    Ls (Leq Siang - 8 Jam Kerja)
+                                    Laeq 8h
                                 </p>
                                 <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
                                     {summary.ls_value.toFixed(2)} dB

@@ -39,3 +39,19 @@ Schedule::command('iot:getall --period=L4 --force')
     ->dailyAt('16:11')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-L4.log'));
+
+// Calculate Daily Summary (Ls, TWA, DND) after L4 is done
+Schedule::command('iot:calculate-daily')
+    ->dailyAt('16:15')
+    ->timezone('Asia/Jakarta')
+    ->appendOutputTo(storage_path('logs/cronjob-daily-summary.log'));
+
+// Telegram Alert System - Check conditions and send alerts every hour at minute 00
+Schedule::command('telegram:send-alert')
+    ->hourly()
+    ->appendOutputTo(storage_path('logs/telegram-alert.log'));
+
+// WhatsApp Alert System - Check conditions and send alerts every hour at minute 00
+Schedule::command('whatsapp:send-alert')
+    ->hourly()
+    ->appendOutputTo(storage_path('logs/whatsapp-alert.log'));

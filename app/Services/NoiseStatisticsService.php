@@ -279,7 +279,7 @@ class NoiseStatisticsService
         // T = allowable exposure time
         $dnd = ($exposureTime / $allowableTime) * 100;
         
-        return round($dnd, 2);
+        return $dnd;
     }
 
     /**

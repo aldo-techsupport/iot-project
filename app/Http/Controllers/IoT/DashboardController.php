@@ -229,6 +229,11 @@ class DashboardController extends Controller
                 'is_active' => $device->is_active,
                 'status' => $device->status,
                 'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+                'telegram_bot_token' => $device->telegram_bot_token,
+                'telegram_chat_id' => $device->telegram_chat_id,
+                'telegram_enabled' => $device->telegram_enabled,
+                'whatsapp_numbers' => $device->whatsapp_numbers,
+                'whatsapp_enabled' => $device->whatsapp_enabled,
                 'latest_telemetry' => $device->latestTelemetry ? [
                     'temperature' => $device->latestTelemetry->temperature,
                     'humidity' => $device->latestTelemetry->humidity,

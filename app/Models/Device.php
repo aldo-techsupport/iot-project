@@ -21,17 +21,26 @@ class Device extends Model
         'description',
         'is_active',
         'last_seen_at',
+        'telegram_bot_token',
+        'telegram_chat_id',
+        'telegram_enabled',
+        'whatsapp_numbers',
+        'whatsapp_enabled',
     ];
 
     protected $hidden = [
         'device_key',
         'device_key_hash',
+        'telegram_bot_token',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'telegram_enabled' => 'boolean',
+            'whatsapp_enabled' => 'boolean',
+            'whatsapp_numbers' => 'array',
             'last_seen_at' => 'datetime',
         ];
     }
