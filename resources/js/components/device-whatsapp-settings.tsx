@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ export default function DeviceWhatsAppSettings({ device }: Props) {
     const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
     const [testing, setTesting] = useState(false);
     const [testingNumber, setTestingNumber] = useState<string | null>(null);
+    const [sendingTester, setSendingTester] = useState<string | null>(null);
     const [newNumber, setNewNumber] = useState('');
     const [addingNumber, setAddingNumber] = useState(false);
 
@@ -27,11 +28,33 @@ export default function DeviceWhatsAppSettings({ device }: Props) {
         whatsapp_enabled: device.whatsapp_enabled || false,
     });
 
-    const handleToggleChange = (checked: boolean) => {
-        setData('whatsapp_enabled', checked);
-        put(`/iot/devices/${device.id}/whatsapp`, {
-            preserveScroll: true,
+    // Sync form data with device prop when it changes
+    useEffect(() => {
+        setData({
+            whatsapp_numbers: device.whatsapp_numbers || [],
+            whatsapp_enabled: device.whatsapp_enabled || false,
         });
+    }, [device.whatsapp_enabled, device.whatsapp_numbers]);
+
+    const handleToggleChange = (checked: boolean) => {
+        // Update local state
+        setData('whatsapp_enabled', checked);
+        
+        // Send PUT request with updated data
+        router.put(
+            `/iot/devices/${device.id}/whatsapp`,
+            {
+                whatsapp_numbers: data.whatsapp_numbers,
+                whatsapp_enabled: checked,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Reload device data to sync
+                    router.reload({ only: ['device'] });
+                },
+            }
+        );
     };
 
     const handleAddNumber = (e: React.FormEvent) => {
@@ -90,6 +113,26 @@ export default function DeviceWhatsAppSettings({ device }: Props) {
                     toast.error('Failed to send test message');
                 },
                 onFinish: () => setTestingNumber(null),
+            }
+        );
+    };
+
+    const handleSendTester = (phoneNumber: string) => {
+        if (sendingTester) return; // Prevent multiple simultaneous sends
+        
+        setSendingTester(phoneNumber);
+        router.post(
+            `/iot/devices/${device.id}/whatsapp/send-tester`,
+            { phone_number: phoneNumber },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success(`Tester notification sent to +${phoneNumber}!`);
+                },
+                onError: () => {
+                    toast.error('Failed to send tester notification');
+                },
+                onFinish: () => setSendingTester(null),
             }
         );
     };
@@ -167,16 +210,25 @@ export default function DeviceWhatsAppSettings({ device }: Props) {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => handleTestNumber(number)}
-                                                disabled={testingNumber !== null}
+                                                disabled={testingNumber !== null || sendingTester !== null}
                                             >
                                                 {testingNumber === number ? 'Sending...' : 'Send Test Message'}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => handleSendTester(number)}
+                                                disabled={testingNumber !== null || sendingTester !== null}
+                                            >
+                                                {sendingTester === number ? 'Sending...' : 'Test Notif'}
                                             </Button>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => handleDeleteNumber(number)}
-                                                disabled={testingNumber !== null}
+                                                disabled={testingNumber !== null || sendingTester !== null}
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-600" />
                                             </Button>

@@ -81,14 +81,32 @@ class WhatsAppAlertService
             return 0;
         }
 
-        $alertType = $this->determineAlertType($noiseDb, $thi);
-        
-        if ($alertType === null) {
-            return 0; // No alert needed
+        // Check if current time is within working hours (08:00 - 17:00 WIB)
+        if (!$this->isWorkingHours()) {
+            Log::info('Outside working hours, skipping alert', [
+                'device' => $device->name,
+                'time' => now()->timezone('Asia/Jakarta')->format('H:i:s'),
+            ]);
+            return 0;
         }
 
+        $alertType = $this->determineAlertType($noiseDb, $thi);
+        
+        // Always send notification (either alert or status update)
         $message = $this->formatAlertMessage($device->name, $noiseDb, $thi, $alertType);
         return $this->sendToDevice($device, $message);
+    }
+
+    /**
+     * Check if current time is within working hours (08:00 - 17:00 WIB)
+     */
+    private function isWorkingHours(): bool
+    {
+        $now = now()->timezone('Asia/Jakarta');
+        $hour = (int) $now->format('H');
+        
+        // Working hours: 08:00 - 17:00 (8 AM to 5 PM)
+        return $hour >= 8 && $hour < 17;
     }
 
     /**
@@ -129,55 +147,63 @@ class WhatsAppAlertService
     /**
      * Format alert message based on type
      */
-    private function formatAlertMessage(string $deviceName, float $noiseDb, float $thi, int $alertType): string
+    private function formatAlertMessage(string $deviceName, float $noiseDb, float $thi, ?int $alertType): string
     {
         $timestamp = now()->timezone('Asia/Jakarta')->format('d/m/Y H:i:s');
         $message = "";
 
-        switch ($alertType) {
-            case 1:
-                $message = "1️⃣ *THI > 29*\n\n";
-                $message .= "⚠️ *PERINGATAN SUHU PANAS!*\n\n";
-                $message .= "Nilai THI terdeteksi lebih dari 29.\n";
-                $message .= "Kondisi lingkungan sudah masuk kategori panas dan berpotensi menyebabkan stres panas.\n\n";
-                $message .= "Segera lakukan pengecekan ventilasi atau pendinginan.\n\n";
-                break;
+        // If no alert condition, send status update
+        if ($alertType === null) {
+            $message = "✅ *STATUS MONITORING*\n\n";
+            $message .= "📊 *Kondisi Normal*\n\n";
+            $message .= "Semua parameter dalam batas aman.\n";
+            $message .= "Tidak ada peringatan yang perlu ditindaklanjuti.\n\n";
+        } else {
+            switch ($alertType) {
+                case 1:
+                    $message = "1️⃣ *THI > 29*\n\n";
+                    $message .= "⚠️ *PERINGATAN SUHU PANAS!*\n\n";
+                    $message .= "Nilai THI terdeteksi lebih dari 29.\n";
+                    $message .= "Kondisi lingkungan sudah masuk kategori panas dan berpotensi menyebabkan stres panas.\n\n";
+                    $message .= "Segera lakukan pengecekan ventilasi atau pendinginan.\n\n";
+                    break;
 
-            case 2:
-                $message = "2️⃣ *dB > 85*\n\n";
-                $message .= "⚠️ *PERINGATAN KEBISINGAN!*\n\n";
-                $message .= "Tingkat kebisingan melebihi 85 dB.\n";
-                $message .= "Suara sudah berada di ambang batas yang dapat mengganggu kenyamanan dan kesehatan.\n\n";
-                $message .= "Segera evaluasi sumber kebisingan.\n\n";
-                break;
+                case 2:
+                    $message = "2️⃣ *dB > 85*\n\n";
+                    $message .= "⚠️ *PERINGATAN KEBISINGAN!*\n\n";
+                    $message .= "Tingkat kebisingan melebihi 85 dB.\n";
+                    $message .= "Suara sudah berada di ambang batas yang dapat mengganggu kenyamanan dan kesehatan.\n\n";
+                    $message .= "Segera evaluasi sumber kebisingan.\n\n";
+                    break;
 
-            case 3:
-                $message = "3️⃣ *dB > 85 & THI > 29*\n\n";
-                $message .= "🚨 *PERINGATAN KRITIS!*\n\n";
-                $message .= "Kebisingan > 85 dB\n";
-                $message .= "*dan*\n";
-                $message .= "THI > 29 (Kondisi Panas)\n\n";
-                $message .= "Lingkungan dalam kondisi tidak nyaman dan berisiko.\n\n";
-                $message .= "Segera lakukan tindakan pengendalian suhu dan kebisingan.\n\n";
-                break;
+                case 3:
+                    $message = "3️⃣ *dB > 85 & THI > 29*\n\n";
+                    $message .= "🚨 *PERINGATAN KRITIS!*\n\n";
+                    $message .= "Kebisingan > 85 dB\n";
+                    $message .= "*dan*\n";
+                    $message .= "THI > 29 (Kondisi Panas)\n\n";
+                    $message .= "Lingkungan dalam kondisi tidak nyaman dan berisiko.\n\n";
+                    $message .= "Segera lakukan tindakan pengendalian suhu dan kebisingan.\n\n";
+                    break;
 
-            case 4:
-                $message = "4️⃣ *dB > 100*\n\n";
-                $message .= "🚨 *BAHAYA KEBISINGAN TINGGI!*\n\n";
-                $message .= "Tingkat kebisingan melebihi 100 dB.\n";
-                $message .= "Berpotensi merusak pendengaran jika terpapar dalam waktu lama.\n\n";
-                $message .= "Gunakan pelindung telinga dan periksa sumber suara segera!\n\n";
-                break;
+                case 4:
+                    $message = "4️⃣ *dB > 100*\n\n";
+                    $message .= "🚨 *BAHAYA KEBISINGAN TINGGI!*\n\n";
+                    $message .= "Tingkat kebisingan melebihi 100 dB.\n";
+                    $message .= "Berpotensi merusak pendengaran jika terpapar dalam waktu lama.\n\n";
+                    $message .= "Gunakan pelindung telinga dan periksa sumber suara segera!\n\n";
+                    break;
 
-            case 5:
-                $message = "5️⃣ *dB > 100 & THI > 29*\n\n";
-                $message .= "🚨🚨 *KONDISI DARURAT!*\n\n";
-                $message .= "Kebisingan > 100 dB\n";
-                $message .= "*dan*\n";
-                $message .= "THI > 29 (Suhu Ekstrem)\n\n";
-                $message .= "Lingkungan sangat berbahaya dan tidak aman.\n\n";
-                $message .= "Segera lakukan evakuasi atau tindakan pengamanan.\n\n";
-                break;
+                case 5:
+                    $message = "5️⃣ *dB > 100 & THI > 29*\n\n";
+                    $message .= "🚨🚨 *KONDISI DARURAT!*\n\n";
+                    $message .= "Kebisingan > 100 dB\n";
+                    $message .= "*dan*\n";
+                    $message .= "THI > 29 (Suhu Ekstrem)\n\n";
+                    $message .= "Lingkungan sangat berbahaya dan tidak aman.\n\n";
+                    $message .= "Segera lakukan evakuasi atau tindakan pengamanan.\n\n";
+                    break;
+            }
         }
 
         $message .= "📍 Device: *{$deviceName}*\n";

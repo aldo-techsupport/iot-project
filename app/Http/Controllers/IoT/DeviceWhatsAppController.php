@@ -121,4 +121,50 @@ class DeviceWhatsAppController extends Controller
         
         return back()->with('success', 'WhatsApp alert command executed successfully!');
     }
+
+    public function sendTesterNotification(Request $request, Device $device, WhatsAppAlertService $whatsapp)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone_number' => 'required|string|regex:/^628[0-9]{8,12}$/',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $phoneNumber = $request->input('phone_number');
+        
+        try {
+            $message = "🧪 *TEST NOTIFIKASI*\n\n";
+            $message .= "Ini adalah pesan test dari sistem monitoring.\n\n";
+            $message .= "📱 Device: {$device->name}\n";
+            $message .= "🆔 Device ID: {$device->slug}\n";
+            $message .= "⏰ Waktu: " . now()->format('d/m/Y H:i:s') . "\n\n";
+            $message .= "✅ Jika Anda menerima pesan ini, konfigurasi WhatsApp sudah berhasil!";
+
+            // Correct parameter order: sendMessage($message, $phoneNumber)
+            $result = $whatsapp->sendMessage($message, $phoneNumber);
+            
+            if ($result) {
+                \Log::info('Tester notification sent successfully', [
+                    'device_id' => $device->id,
+                    'phone_number' => $phoneNumber,
+                ]);
+                return back()->with('success', 'Test notification sent successfully!');
+            } else {
+                \Log::error('Failed to send tester notification', [
+                    'device_id' => $device->id,
+                    'phone_number' => $phoneNumber,
+                ]);
+                return back()->with('error', 'Failed to send test notification');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Exception sending tester notification', [
+                'device_id' => $device->id,
+                'phone_number' => $phoneNumber,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
 }

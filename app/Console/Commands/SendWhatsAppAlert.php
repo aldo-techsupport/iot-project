@@ -23,7 +23,7 @@ class SendWhatsAppAlert extends Command
             return self::SUCCESS;
         }
 
-        $totalAlertsSent = 0;
+        $totalSent = 0;
 
         foreach ($devices as $device) {
             $telemetry = $device->latestTelemetry;
@@ -35,19 +35,19 @@ class SendWhatsAppAlert extends Command
             $noiseDb = $telemetry->noise_db ?? 0;
             $thi = $telemetry->thi ?? 0;
 
-            // Check if alert conditions are met and send to device's configured numbers
+            // Always send notification (alert or status update) to device's configured numbers
             $sentCount = $whatsapp->checkAndSendAlert($device, $noiseDb, $thi);
             
             if ($sentCount > 0) {
-                $totalAlertsSent += $sentCount;
-                $this->info("Alert sent for device: {$device->name} to {$sentCount} number(s)");
+                $totalSent += $sentCount;
+                $this->info("Notification sent for device: {$device->name} to {$sentCount} number(s)");
             }
         }
 
-        if ($totalAlertsSent > 0) {
-            $this->info("Total {$totalAlertsSent} WhatsApp alert(s) sent");
+        if ($totalSent > 0) {
+            $this->info("Total {$totalSent} WhatsApp notification(s) sent");
         } else {
-            $this->info("No alert conditions met");
+            $this->info("No notifications sent (outside working hours or no active devices)");
         }
 
         return self::SUCCESS;

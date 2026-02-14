@@ -23,7 +23,7 @@ class SendTelegramAlert extends Command
             return self::SUCCESS;
         }
 
-        $alertCount = 0;
+        $sentCount = 0;
 
         foreach ($devices as $device) {
             $telemetry = $device->latestTelemetry;
@@ -35,17 +35,17 @@ class SendTelegramAlert extends Command
             $noiseDb = $telemetry->noise_db ?? 0;
             $thi = $telemetry->thi ?? 0;
 
-            // Check if alert conditions are met and send
+            // Always send notification (alert or status update)
             if ($telegram->checkAndSendAlert($device->name, $noiseDb, $thi, $device)) {
-                $alertCount++;
-                $this->info("Alert sent for device: {$device->name}");
+                $sentCount++;
+                $this->info("Notification sent for device: {$device->name}");
             }
         }
 
-        if ($alertCount > 0) {
-            $this->info("Sent {$alertCount} alert notifications");
+        if ($sentCount > 0) {
+            $this->info("Sent {$sentCount} notification(s)");
         } else {
-            $this->info("No alert conditions met");
+            $this->info("No notifications sent (outside working hours or no active devices)");
         }
 
         return self::SUCCESS;

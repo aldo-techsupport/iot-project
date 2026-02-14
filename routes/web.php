@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/devices/{device}/whatsapp/delete', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'deleteNumber'])->name('device.whatsapp.delete');
         Route::post('/devices/{device}/whatsapp/test', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'test'])->name('device.whatsapp.test');
         Route::post('/devices/{device}/whatsapp/test-number', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'testNumber'])->name('device.whatsapp.test-number');
+        Route::post('/devices/{device}/whatsapp/send-tester', [\App\Http\Controllers\IoT\DeviceWhatsAppController::class, 'sendTesterNotification'])->name('device.whatsapp.send-tester');
     });
 });
 
