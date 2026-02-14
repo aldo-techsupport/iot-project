@@ -357,6 +357,19 @@ class WhatsAppGatewayService
 
     protected function client(): PendingRequest
     {
-        return Http::withToken($this->token)->acceptJson()->timeout(30);
+        return Http::withToken($this->token)
+            ->acceptJson()
+            ->timeout(30)
+            ->retry(3, 1000, function ($exception, $request) {
+                // Retry on connection errors (including DNS failures)
+                if ($exception instanceof \Illuminate\Http\Client\ConnectionException) {
+                    \Log::warning('WhatsApp Gateway connection failed, retrying...', [
+                        'url' => $request->url(),
+                        'error' => $exception->getMessage(),
+                    ]);
+                    return true;
+                }
+                return false;
+            }, throw: false);
     }
 }

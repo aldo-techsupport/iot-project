@@ -45,9 +45,23 @@ class WhatsAppAlertService
             ]);
 
             return true;
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('WhatsApp Gateway connection failed (DNS/Network issue): ' . $e->getMessage(), [
+                'phone' => $phoneNumber,
+                'gateway_url' => env('WA_GATEWAY_URL'),
+            ]);
+            return false;
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            Log::error('WhatsApp Gateway request failed: ' . $e->getMessage(), [
+                'phone' => $phoneNumber,
+                'status_code' => $e->response?->status(),
+                'response' => $e->response?->body(),
+            ]);
+            return false;
         } catch (\Exception $e) {
             Log::error('Failed to send WhatsApp alert: ' . $e->getMessage(), [
                 'phone' => $phoneNumber,
+                'exception_type' => get_class($e),
             ]);
             return false;
         }
