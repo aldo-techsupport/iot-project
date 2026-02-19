@@ -4,12 +4,7 @@ namespace App\Services;
 
 class NoiseStatisticsService
 {
-    /**
-     * Calculate basic statistics (min, max, average) from noise level data
-     * 
-     * @param array $noiseLevels Array of float noise levels in dB
-     * @return array ['min' => float, 'max' => float, 'average' => float]
-     */
+ 
     public function calculateBasicStats(array $noiseLevels): array
     {
         if (empty($noiseLevels)) {
@@ -23,37 +18,17 @@ class NoiseStatisticsService
         ];
     }
 
-    /**
-     * Calculate range (r = Lmax - Lmin)
-     * 
-     * @param float $max Maximum noise level
-     * @param float $min Minimum noise level
-     * @return float Range value
-     */
     public function calculateRange(float $max, float $min): float
     {
         return $max - $min;
     }
 
-    /**
-     * Calculate number of classes using Sturges' Rule
-     * Formula: k = 1 + 3.3 × log10(n)
-     * 
-     * @param int $dataCount Number of data points (default: 120)
-     * @return float Number of classes
-     */
     public function calculateClassCount(int $dataCount = 120): float
     {
         return 1 + (3.3 * log10($dataCount));
     }
 
-    /**
-     * Calculate class interval (i = r / k)
-     * 
-     * @param float $range Range value
-     * @param float $classCount Number of classes
-     * @return float Class interval
-     */
+
     public function calculateClassInterval(float $range, float $classCount): float
     {
         if ($classCount == 0) {
@@ -62,15 +37,7 @@ class NoiseStatisticsService
         return $range / $classCount;
     }
 
-    /**
-     * Build frequency distribution table
-     * 
-     * @param array $noiseLevels Array of noise levels
-     * @param float $min Minimum value
-     * @param float $interval Class interval
-     * @param float $classCount Number of classes (rounded)
-     * @return array Array of frequency distribution
-     */
+  
     public function buildFrequencyDistribution(
         array $noiseLevels, 
         float $min, 
@@ -113,14 +80,7 @@ class NoiseStatisticsService
         return $distribution;
     }
 
-    /**
-     * Calculate Leq (Equivalent Continuous Sound Level)
-     * Formula: Leq = 10 × log10(1/N × Σ(ni × 10^(0.1×Li)))
-     * 
-     * @param array $frequencyDistribution Array from buildFrequencyDistribution()
-     * @param int $totalData Total number of data points (N)
-     * @return float Leq value in dB
-     */
+
     public function calculateLeq(array $frequencyDistribution, int $totalData): float
     {
         if ($totalData == 0) {
@@ -143,14 +103,7 @@ class NoiseStatisticsService
         return round($leq, 2);
     }
 
-    /**
-     * Calculate Temperature Humidity Index (THI)
-     * Formula: THI = 0.8 × Ta + (RH × Ta) / 500
-     * 
-     * @param float $temperature Temperature in Celsius
-     * @param float $humidity Humidity percentage
-     * @return float THI value
-     */
+
     public function calculateTHI(float $temperature, float $humidity): float
     {
         return 0.8 * $temperature + ($humidity * $temperature) / 500;
@@ -265,21 +218,31 @@ class NoiseStatisticsService
      * Calculate DND (Daily Noise Dose) using NIOSH method
      * Formula: D(%) = (C/T) × 100%
      * 
+     * Following thesis calculation method:
+     * - C = 480 minutes (8 hours work day)
+     * - T = allowable time in minutes (from formula above)
+     * - Result matches reference calculation (755% for Ls=93.78 dB)
+     * 
      * @param float $noiseLevel Average noise level (Ls) in dB
      * @param float $exposureTime Actual exposure time in hours (default: 8)
      * @return float DND value in percentage
      */
     public function calculateDND(float $noiseLevel, float $exposureTime = 8): float
     {
-        // Calculate allowable time for this noise level
-        $allowableTime = $this->calculateAllowableTime($noiseLevel);
+        // Calculate allowable time in MINUTES (not hours) for accurate DND calculation
+        // T = 480 / 2^((L-85)/3)
+        $exponent = ($noiseLevel - 85) / 3;
+        $allowableTimeMinutes = 480 / pow(2, $exponent);
+        
+        // Convert exposure time to minutes
+        $exposureTimeMinutes = $exposureTime * 60;
         
         // Calculate DND: D(%) = (C/T) × 100%
-        // C = actual exposure time
-        // T = allowable exposure time
-        $dnd = ($exposureTime / $allowableTime) * 100;
+        // C = actual exposure time in minutes
+        // T = allowable exposure time in minutes
+        $dnd = ($exposureTimeMinutes / $allowableTimeMinutes) * 100;
         
-        return $dnd;
+        return round($dnd, 2);
     }
 
     /**

@@ -139,13 +139,13 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>Daily Report - {new Date(date).toLocaleDateString('id-ID', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                        <CardTitle>Daily Report - {new Date(date).toLocaleDateString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                         })}</CardTitle>
-                        
+
                         <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" size="sm" className="gap-2">
@@ -255,7 +255,7 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     {summary.ls_value.toFixed(2)} dB
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    Formula: 10 × log₁₀(1/8 × Σ(Tᵢ × 10^(0.1×Lᵢ)))
+                                    Formula: 10 × log(1/8 × Σ(Tᵢ × 10^(0.1×Lᵢ)))
                                 </p>
                             </div>
                             <Badge variant={summary.ls_value > 85 ? 'destructive' : 'default'} className="text-lg px-4 py-2">
@@ -308,17 +308,17 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     T (Waktu Maksimal yang Diizinkan)
                                 </p>
                                 <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">
-                                    {summary.allowable_time.toLocaleString('id-ID', { 
-                                        minimumFractionDigits: 2, 
-                                        maximumFractionDigits: 2 
+                                    {summary.allowable_time.toLocaleString('id-ID', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
                                     })} jam
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2">
                                     Formula: T = 8 / 2^((L-85)/3)
                                 </p>
                             </div>
-                            <Badge 
-                                variant={summary.allowable_time < 8 ? 'destructive' : 'default'} 
+                            <Badge
+                                variant={summary.allowable_time < 8 ? 'destructive' : 'default'}
                                 className="text-lg px-4 py-2"
                             >
                                 {summary.allowable_time < 8 ? 'Reduced Time' : summary.allowable_time > 24 ? 'Very Safe' : 'Full Time'}
@@ -330,9 +330,9 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             </p>
                             <p className="text-sm text-amber-700 dark:text-amber-300">
                                 Waktu maksimal yang diizinkan: <span className="font-bold">
-                                    {summary.allowable_time.toLocaleString('id-ID', { 
-                                        minimumFractionDigits: 2, 
-                                        maximumFractionDigits: 2 
+                                    {summary.allowable_time.toLocaleString('id-ID', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
                                     })} jam
                                 </span>
                             </p>

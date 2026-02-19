@@ -13,6 +13,7 @@ use App\Services\NoiseDataSelectionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -50,7 +51,7 @@ class DashboardController extends Controller
         try {
             $date = request()->input('date', now()->toDateString());
             
-            \Log::info('Monitoring page accessed', ['date' => $date]);
+            Log::info('Monitoring page accessed', ['date' => $date]);
             
             // Get all devices with their latest telemetry
             $devices = Device::with('latestTelemetry')
@@ -154,7 +155,7 @@ class DashboardController extends Controller
                             ]),
                         ];
                     } catch (\Exception $e) {
-                        \Log::error('Error processing device in monitoring', [
+                        Log::error('Error processing device in monitoring', [
                             'device_id' => $device->id,
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString()
@@ -185,7 +186,7 @@ class DashboardController extends Controller
                     }
                 });
 
-            \Log::info('Rendering monitoring page', ['device_count' => $devices->count()]);
+            Log::info('Rendering monitoring page', ['device_count' => $devices->count()]);
 
             return Inertia::render('iot/monitoring', [
                 'devices' => $devices,
@@ -193,7 +194,7 @@ class DashboardController extends Controller
                 'currentDate' => now()->toDateString(),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in monitoring method', [
+            Log::error('Error in monitoring method', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -622,7 +623,7 @@ class DashboardController extends Controller
             'data' => $summary,
             'calculation_details' => [
                 'periods' => $periodData,
-                'ls_formula' => '10 × log10(1/8 × Σ(Ti × 10^(0.1×Li)))',
+                'ls_formula' => '10 × log(1/8 × Σ(Ti × 10^(0.1×Li)))',
                 'dnd_formula' => 'D(%) = (C/T) × 100%, where T = 8 / 2^((L-85)/3)',
                 'twa_formula' => '10 × log(DND/100) + 85',
                 'exposure_time' => $exposureTime . ' hours',

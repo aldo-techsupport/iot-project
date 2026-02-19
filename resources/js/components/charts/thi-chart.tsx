@@ -19,40 +19,26 @@ interface ThiChartProps {
 }
 
 function getThiCategory(thi: number): { category: string; color: string; bgColor: string; description: string } {
-    if (thi < 68) {
-        return { 
-            category: 'Normal', 
-            color: 'text-green-700 dark:text-green-400', 
-            bgColor: 'bg-green-100 dark:bg-green-900/30',
-            description: 'No heat stress' 
-        };
-    } else if (thi < 72) {
-        return { 
-            category: 'Alert', 
-            color: 'text-yellow-700 dark:text-yellow-400', 
-            bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
-            description: 'Mild heat stress' 
-        };
-    } else if (thi < 79) {
-        return { 
-            category: 'Danger', 
-            color: 'text-orange-700 dark:text-orange-400', 
-            bgColor: 'bg-orange-100 dark:bg-orange-900/30',
-            description: 'Moderate heat stress' 
-        };
-    } else if (thi < 84) {
-        return { 
-            category: 'Emergency', 
-            color: 'text-red-700 dark:text-red-400', 
+    if (thi > 29) {
+        return {
+            category: 'Tidak Nyaman',
+            color: 'text-red-700 dark:text-red-400',
             bgColor: 'bg-red-100 dark:bg-red-900/30',
-            description: 'Severe heat stress' 
+            description: 'Kondisi tidak nyaman'
+        };
+    } else if (thi >= 27) {
+        return {
+            category: 'Cukup Nyaman',
+            color: 'text-yellow-700 dark:text-yellow-400',
+            bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
+            description: 'Kondisi cukup nyaman'
         };
     } else {
-        return { 
-            category: 'Extreme', 
-            color: 'text-purple-700 dark:text-purple-400', 
-            bgColor: 'bg-purple-100 dark:bg-purple-900/30',
-            description: 'Extreme heat stress' 
+        return {
+            category: 'Nyaman',
+            color: 'text-green-700 dark:text-green-400',
+            bgColor: 'bg-green-100 dark:bg-green-900/30',
+            description: 'Kondisi nyaman'
         };
     }
 }
@@ -68,10 +54,10 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                 date: date,
                 group_by: 'hour',
             });
-            
+
             const response = await fetch(`/api/v1/iot/thi?${params}`);
             const result = await response.json();
-            
+
             if (result.success) {
                 setData(result.data);
             }
@@ -374,19 +360,17 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                         <CardTitle className="text-sm">THI Categories</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-5">
+                        <div className="grid gap-2 sm:grid-cols-3">
                             {[
-                                { range: '< 68', category: 'Normal', thi: 65 },
-                                { range: '68-71', category: 'Alert', thi: 70 },
-                                { range: '72-78', category: 'Danger', thi: 75 },
-                                { range: '79-83', category: 'Emergency', thi: 80 },
-                                { range: '≥ 84', category: 'Extreme', thi: 85 },
+                                { range: '< 27', category: 'Nyaman', thi: 26 },
+                                { range: '27 - 29', category: 'Cukup Nyaman', thi: 28 },
+                                { range: '> 29', category: 'Tidak Nyaman', thi: 30 },
                             ].map((item) => {
                                 const cat = getThiCategory(item.thi);
                                 return (
-                                    <div key={item.category} className={`p-2 rounded-lg ${cat.bgColor}`}>
-                                        <div className={`font-medium text-sm ${cat.color}`}>{item.category}</div>
-                                        <div className="text-xs text-muted-foreground">{item.range}</div>
+                                    <div key={item.category} className={`p-3 rounded-lg ${cat.bgColor}`}>
+                                        <div className={`font-semibold text-sm ${cat.color}`}>{item.category}</div>
+                                        <div className="text-xs text-muted-foreground mt-1">THI {item.range}</div>
                                         <div className="text-xs mt-1">{cat.description}</div>
                                     </div>
                                 );
@@ -453,12 +437,12 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                             const category = getThiCategory(point.thi);
                             const maxValue = 100;
                             const width = (point.thi / maxValue) * 100;
-                            
+
                             return (
                                 <div key={point.hour} className="flex items-center gap-2">
                                     <div className="w-16 text-sm font-medium">{point.time}</div>
                                     <div className="flex-1 bg-muted rounded-full h-8 relative overflow-hidden">
-                                        <div 
+                                        <div
                                             className={`h-full ${category.bgColor} transition-all duration-300 flex items-center justify-end pr-2`}
                                             style={{ width: `${Math.min(width, 100)}%` }}
                                         >
@@ -521,19 +505,17 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                     <CardTitle className="text-sm">THI Categories</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-5">
+                    <div className="grid gap-2 sm:grid-cols-3">
                         {[
-                            { range: '< 68', category: 'Normal', thi: 65 },
-                            { range: '68-71', category: 'Alert', thi: 70 },
-                            { range: '72-78', category: 'Danger', thi: 75 },
-                            { range: '79-83', category: 'Emergency', thi: 80 },
-                            { range: '≥ 84', category: 'Extreme', thi: 85 },
+                            { range: '< 27', category: 'Nyaman', thi: 26 },
+                            { range: '27 - 29', category: 'Cukup Nyaman', thi: 28 },
+                            { range: '> 29', category: 'Tidak Nyaman', thi: 30 },
                         ].map((item) => {
                             const cat = getThiCategory(item.thi);
                             return (
-                                <div key={item.category} className={`p-2 rounded-lg ${cat.bgColor}`}>
-                                    <div className={`font-medium text-sm ${cat.color}`}>{item.category}</div>
-                                    <div className="text-xs text-muted-foreground">{item.range}</div>
+                                <div key={item.category} className={`p-3 rounded-lg ${cat.bgColor}`}>
+                                    <div className={`font-semibold text-sm ${cat.color}`}>{item.category}</div>
+                                    <div className="text-xs text-muted-foreground mt-1">THI {item.range}</div>
                                     <div className="text-xs mt-1">{cat.description}</div>
                                 </div>
                             );
