@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ChartDataPoint, type DeviceDetail } from '@/types/iot';
 import { Head, Link, router } from '@inertiajs/react';
-import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText, MessageSquare, MessageCircle } from 'lucide-react';
+import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText, MessageSquare } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
 import RealTimeTelemetryChart from '@/components/charts/real-time-telemetry-chart';
@@ -15,7 +15,6 @@ import PeriodSelector from '@/components/period-selector';
 import NoiseDataModal from '@/components/noise-data-modal';
 import DailyReportPanel from '@/components/daily-report-panel';
 import DeviceTelegramSettings from '@/components/device-telegram-settings';
-import DeviceWhatsAppSettings from '@/components/device-whatsapp-settings';
 
 interface Props {
     device: DeviceDetail;
@@ -150,7 +149,7 @@ function SimpleLineChart({ data, dataKey, color, label }: { data: ChartDataPoint
 }
 
 export default function DeviceDetailPage({ device, chartData }: Props) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily' | 'telegram' | 'whatsapp'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily' | 'telegram'>('overview');
     const [overviewViewMode, setOverviewViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [noiseViewMode, setNoiseViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -325,67 +324,57 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="border-b">
-                    <div className="flex gap-4">
+                <div className="border-b overflow-x-auto">
+                    <div className="flex gap-2 md:gap-4 min-w-max">
                         <button
                             onClick={() => setActiveTab('overview')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'overview'
+                            className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'overview'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            <Activity className="h-4 w-4" />
-                            Overview
+                            <Activity className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            <span className="hidden sm:inline">Overview</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('noise')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'noise'
+                            className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'noise'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            <BarChart3 className="h-4 w-4" />
-                            Noise Analysis
+                            <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            <span className="hidden sm:inline">Noise</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('thi')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'thi'
+                            className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'thi'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            <Gauge className="h-4 w-4" />
-                            THI
+                            <Gauge className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            <span className="hidden sm:inline">THI</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('daily')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'daily'
+                            className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'daily'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            <FileText className="h-4 w-4" />
-                            Daily Report
+                            <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            <span className="hidden sm:inline">Daily</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('telegram')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'telegram'
+                            className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'telegram'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                                 }`}
                         >
-                            <MessageSquare className="h-4 w-4" />
-                            Telegram
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('whatsapp')}
-                            className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'whatsapp'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <MessageCircle className="h-4 w-4" />
-                            WhatsApp
+                            <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            <span className="hidden sm:inline">Telegram</span>
                         </button>
                     </div>
                 </div>
@@ -428,26 +417,26 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
 
                         {/* Sub-tabs for Chart Type */}
                         <div className="flex justify-end">
-                            <div className="flex gap-2 border rounded-lg p-1">
+                            <div className="flex gap-1 md:gap-2 border rounded-lg p-1">
                                 <button
                                     onClick={() => setOverviewViewMode('recharts')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         overviewViewMode === 'recharts'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    Interactive Chart
+                                    Interactive
                                 </button>
                                 <button
                                     onClick={() => setOverviewViewMode('svg')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         overviewViewMode === 'svg'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    Detailed Chart
+                                    Detailed
                                 </button>
                             </div>
                         </div>
@@ -483,26 +472,26 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             </div>
 
                             {/* Sub-tabs for Chart Type */}
-                            <div className="flex gap-2 border rounded-lg p-1">
+                            <div className="flex gap-1 md:gap-2 border rounded-lg p-1">
                                 <button
                                     onClick={() => setNoiseViewMode('recharts')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         noiseViewMode === 'recharts'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    Interactive Chart
+                                    Interactive
                                 </button>
                                 <button
                                     onClick={() => setNoiseViewMode('svg')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         noiseViewMode === 'svg'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    Detailed Chart
+                                    Detailed
                                 </button>
                             </div>
                         </div>
@@ -555,10 +544,10 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             </div>
 
                             {/* Sub-tabs for Data/Chart */}
-                            <div className="flex gap-2 border rounded-lg p-1">
+                            <div className="flex gap-1 md:gap-2 border rounded-lg p-1">
                                 <button
                                     onClick={() => setThiViewMode('data')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         thiViewMode === 'data'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -568,7 +557,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 </button>
                                 <button
                                     onClick={() => setThiViewMode('chart')}
-                                    className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
                                         thiViewMode === 'chart'
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -614,13 +603,6 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                 {activeTab === 'telegram' && (
                     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
                         <DeviceTelegramSettings device={device} />
-                    </div>
-                )}
-
-                {/* Tab Content: WhatsApp */}
-                {activeTab === 'whatsapp' && (
-                    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-                        <DeviceWhatsAppSettings device={device} />
                     </div>
                 )}
 
