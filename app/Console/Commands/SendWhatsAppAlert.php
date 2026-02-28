@@ -26,6 +26,12 @@ class SendWhatsAppAlert extends Command
         $totalSent = 0;
 
         foreach ($devices as $device) {
+            // Skip if device is offline (last_seen_at > 60 minutes ago)
+            if ($device->status === 'offline' || $device->status === 'never_connected') {
+                $this->info("Skipping device {$device->name}: status is {$device->status}");
+                continue;
+            }
+
             $telemetry = $device->latestTelemetry;
             
             if (!$telemetry) {
