@@ -80,11 +80,11 @@
             autoplay>
         </dotlottie-player>
 
-        <h1>System Upgrade in Progress</h1>
+        <h1>Lakukan Pembayaran Lanjutan</h1>
 
         <p>
-            Lagi maintenance bentar.<br>
-            Server lagi dipoles biar makin stabil.
+            Web Suspend ! Masa berlaku Habis.<br>
+            Hubungi Admin Untuk Melakukan Pembayaran
         </p>
 
         @if(isset($exception) && $exception->getMessage())

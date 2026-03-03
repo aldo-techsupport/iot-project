@@ -24,6 +24,11 @@ class Device extends Model
         'telegram_bot_token',
         'telegram_chat_id',
         'telegram_enabled',
+        'telegram_schedule_type',
+        'telegram_schedule_hours',
+        'telegram_alert_cooldown',
+        'telegram_last_alert_at',
+        'telegram_last_alert_type',
         'whatsapp_numbers',
         'whatsapp_enabled',
     ];
@@ -39,6 +44,10 @@ class Device extends Model
         return [
             'is_active' => 'boolean',
             'telegram_enabled' => 'boolean',
+            'telegram_schedule_hours' => 'array',
+            'telegram_alert_cooldown' => 'integer',
+            'telegram_last_alert_at' => 'datetime',
+            'telegram_last_alert_type' => 'integer',
             'whatsapp_enabled' => 'boolean',
             'whatsapp_numbers' => 'array',
             'last_seen_at' => 'datetime',

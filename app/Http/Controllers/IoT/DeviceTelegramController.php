@@ -21,6 +21,10 @@ class DeviceTelegramController extends Controller
             'telegram_bot_token' => 'nullable|string',
             'telegram_chat_id' => 'nullable|string',
             'telegram_enabled' => 'nullable|boolean',
+            'telegram_schedule_type' => 'nullable|string|in:working_hours,24_hours,custom',
+            'telegram_schedule_hours' => 'nullable|array',
+            'telegram_schedule_hours.*' => 'integer|min:0|max:23',
+            'telegram_alert_cooldown' => 'nullable|integer|min:1|max:60',
         ]);
 
         if ($validator->fails()) {
@@ -32,6 +36,9 @@ class DeviceTelegramController extends Controller
             'telegram_bot_token' => $request->input('telegram_bot_token'),
             'telegram_chat_id' => $request->input('telegram_chat_id'),
             'telegram_enabled' => $request->input('telegram_enabled', false),
+            'telegram_schedule_type' => $request->input('telegram_schedule_type', 'working_hours'),
+            'telegram_schedule_hours' => $request->input('telegram_schedule_hours'),
+            'telegram_alert_cooldown' => $request->input('telegram_alert_cooldown', 5),
         ];
 
         \Log::info('Updating device', ['update_data' => $updateData]);

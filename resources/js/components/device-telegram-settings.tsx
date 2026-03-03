@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { DeviceDetail } from '@/types/iot';
 
 interface Props {
@@ -20,6 +22,9 @@ export default function DeviceTelegramSettings({ device }: Props) {
         telegram_bot_token: device.telegram_bot_token || '',
         telegram_chat_id: device.telegram_chat_id || '',
         telegram_enabled: device.telegram_enabled || false,
+        telegram_schedule_type: device.telegram_schedule_type || 'working_hours',
+        telegram_schedule_hours: device.telegram_schedule_hours || [],
+        telegram_alert_cooldown: device.telegram_alert_cooldown || 5,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -123,6 +128,84 @@ export default function DeviceTelegramSettings({ device }: Props) {
                                 onCheckedChange={handleToggleChange}
                             />
                         </div>
+
+                        {data.telegram_enabled && (
+                            <div className="space-y-4 rounded-lg border p-4 bg-muted/50">
+                                <div className="space-y-2">
+                                    <Label htmlFor="telegram_schedule_type">Notification Schedule</Label>
+                                    <Select
+                                        value={data.telegram_schedule_type}
+                                        onValueChange={(value) => setData('telegram_schedule_type', value)}
+                                    >
+                                        <SelectTrigger id="telegram_schedule_type">
+                                            <SelectValue placeholder="Select schedule type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="working_hours">Working Hours (08:00 - 17:00)</SelectItem>
+                                            <SelectItem value="24_hours">24 Hours (Every Hour)</SelectItem>
+                                            <SelectItem value="custom">Custom Hours</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        {data.telegram_schedule_type === 'working_hours' && 'Notifications sent only during working hours (08:00 - 17:00 WIB)'}
+                                        {data.telegram_schedule_type === '24_hours' && 'Notifications sent every hour, 24/7'}
+                                        {data.telegram_schedule_type === 'custom' && 'Select specific hours below'}
+                                    </p>
+                                </div>
+
+                                {data.telegram_schedule_type === 'custom' && (
+                                    <div className="space-y-2">
+                                        <Label>Select Hours (WIB)</Label>
+                                        <div className="grid grid-cols-6 gap-2">
+                                            {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
+                                                const isChecked = data.telegram_schedule_hours.includes(hour);
+                                                return (
+                                                    <div key={hour} className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id={`hour-${hour}`}
+                                                            checked={isChecked}
+                                                            onCheckedChange={(checked) => {
+                                                                if (checked) {
+                                                                    setData('telegram_schedule_hours', [...data.telegram_schedule_hours, hour].sort((a, b) => a - b));
+                                                                } else {
+                                                                    setData('telegram_schedule_hours', data.telegram_schedule_hours.filter((h: number) => h !== hour));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Label
+                                                            htmlFor={`hour-${hour}`}
+                                                            className="text-sm font-normal cursor-pointer"
+                                                        >
+                                                            {hour.toString().padStart(2, '0')}:00
+                                                        </Label>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {data.telegram_schedule_hours.length > 0 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                Selected: {data.telegram_schedule_hours.map((h: number) => `${h.toString().padStart(2, '0')}:00`).join(', ')}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="telegram_alert_cooldown">Real-time Alert Cooldown (Minutes)</Label>
+                                    <Input
+                                        id="telegram_alert_cooldown"
+                                        type="number"
+                                        min="1"
+                                        max="60"
+                                        value={data.telegram_alert_cooldown}
+                                        onChange={(e) => setData('telegram_alert_cooldown', parseInt(e.target.value) || 5)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Minimum interval between alerts (1-60 minutes). Alert will be sent immediately if condition type changes (e.g., Type 2 → Type 4).
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex gap-3">
                             <Button type="submit" disabled={processing}>

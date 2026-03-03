@@ -28,6 +28,9 @@ export interface DeviceDetail extends DeviceSummary {
     telegram_bot_token: string | null;
     telegram_chat_id: string | null;
     telegram_enabled: boolean;
+    telegram_schedule_type: 'working_hours' | '24_hours' | 'custom';
+    telegram_schedule_hours: number[] | null;
+    telegram_alert_cooldown: number;
     whatsapp_numbers: string[] | null;
     whatsapp_enabled: boolean;
 }

@@ -76,11 +76,12 @@ class TelegramNotificationService
      */
     public function checkAndSendAlert(string $deviceName, float $noiseDb, float $thi, Device $device): bool
     {
-        // Check if current time is within working hours (08:00 - 17:00 WIB)
-        if (!$this->isWorkingHours()) {
-            Log::info('Outside working hours, skipping alert', [
+        // Check if current time is within device's configured schedule
+        if (!$this->isWithinSchedule($device)) {
+            Log::info('Outside configured schedule, skipping alert', [
                 'device' => $deviceName,
-                'time' => now()->timezone('Asia/Jakarta')->format('H:i:s'),
+                'schedule_type' => $device->telegram_schedule_type,
+                'current_hour' => now()->timezone('Asia/Jakarta')->format('H'),
             ]);
             return false;
         }
@@ -93,7 +94,35 @@ class TelegramNotificationService
     }
 
     /**
+     * Check if current time is within device's configured schedule
+     */
+    private function isWithinSchedule(Device $device): bool
+    {
+        $now = now()->timezone('Asia/Jakarta');
+        $currentHour = (int) $now->format('H');
+        
+        $scheduleType = $device->telegram_schedule_type ?? 'working_hours';
+        
+        switch ($scheduleType) {
+            case '24_hours':
+                // Always send, 24/7
+                return true;
+                
+            case 'custom':
+                // Check if current hour is in custom hours array
+                $customHours = $device->telegram_schedule_hours ?? [];
+                return in_array($currentHour, $customHours);
+                
+            case 'working_hours':
+            default:
+                // Working hours: 08:00 - 17:00 (8 AM to 5 PM)
+                return $currentHour >= 8 && $currentHour < 17;
+        }
+    }
+
+    /**
      * Check if current time is within working hours (08:00 - 17:00 WIB)
+     * @deprecated Use isWithinSchedule() instead
      */
     private function isWorkingHours(): bool
     {
@@ -137,6 +166,14 @@ class TelegramNotificationService
         }
         
         return null; // No alert condition met
+    }
+
+    /**
+     * Public method to get alert type (for external use)
+     */
+    public function getAlertType(float $noiseDb, float $thi): ?int
+    {
+        return $this->determineAlertType($noiseDb, $thi);
     }
 
     /**

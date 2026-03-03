@@ -8,6 +8,7 @@ use App\Http\Requests\Api\StoreTelemetryRequest;
 use App\Models\Device;
 use App\Models\NoiseRawData;
 use App\Models\NoiseCalculation;
+use App\Services\TelegramNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -76,6 +77,9 @@ class TelemetryController extends Controller
         ]);
 
         $device->updateLastSeen();
+
+        // Real-time alert: Check if conditions meet alert thresholds
+        $this->checkAndSendRealtimeAlert($device, $telemetry);
 
         // Auto-save to noise_raw_data if in monitoring period
         $period = $this->detectPeriod();
@@ -283,5 +287,93 @@ class TelemetryController extends Controller
             ],
             'errors' => null,
         ]);
+    }
+
+    /**
+     * Check and send real-time alert if conditions meet thresholds
+     * This triggers immediately when device sends data with dangerous levels
+     */
+    private function checkAndSendRealtimeAlert(Device $device, $telemetry): void
+    {
+        // Only send real-time alerts if device has Telegram enabled
+        if (!$device->telegram_enabled) {
+            return;
+        }
+
+        $noiseDb = $telemetry->noise_db ?? 0;
+        $thi = $telemetry->thi ?? 0;
+
+        // Get current alert type
+        $telegram = app(TelegramNotificationService::class);
+        $currentAlertType = $telegram->getAlertType($noiseDb, $thi);
+        
+        // No alert condition met
+        if ($currentAlertType === null) {
+            return;
+        }
+
+        // Check cooldown and alert type change
+        $shouldSendAlert = $this->shouldSendAlert($device, $currentAlertType);
+        
+        if (!$shouldSendAlert) {
+            \Log::info('Alert skipped due to cooldown or same alert type', [
+                'device' => $device->name,
+                'current_type' => $currentAlertType,
+                'last_type' => $device->telegram_last_alert_type,
+                'last_alert_at' => $device->telegram_last_alert_at?->format('Y-m-d H:i:s'),
+            ]);
+            return;
+        }
+
+        // Send real-time alert
+        try {
+            $success = $telegram->checkAndSendAlert($device->name, $noiseDb, $thi, $device);
+            
+            if ($success) {
+                // Update tracking
+                $device->update([
+                    'telegram_last_alert_at' => now(),
+                    'telegram_last_alert_type' => $currentAlertType,
+                ]);
+                
+                \Log::info('Real-time alert sent', [
+                    'device' => $device->name,
+                    'noise_db' => $noiseDb,
+                    'thi' => $thi,
+                    'alert_type' => $currentAlertType,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Real-time alert failed: ' . $e->getMessage(), [
+                'device' => $device->name,
+                'noise_db' => $noiseDb,
+                'thi' => $thi,
+            ]);
+        }
+    }
+
+    /**
+     * Determine if alert should be sent based on cooldown and alert type change
+     */
+    private function shouldSendAlert(Device $device, int $currentAlertType): bool
+    {
+        $lastAlertAt = $device->telegram_last_alert_at;
+        $lastAlertType = $device->telegram_last_alert_type;
+        $cooldownMinutes = $device->telegram_alert_cooldown ?? 5;
+
+        // First time alert - always send
+        if ($lastAlertAt === null) {
+            return true;
+        }
+
+        // Alert type changed - always send (condition changed)
+        if ($lastAlertType !== $currentAlertType) {
+            return true;
+        }
+
+        // Same alert type - check cooldown
+        $minutesSinceLastAlert = $lastAlertAt->diffInMinutes(now());
+        
+        return $minutesSinceLastAlert >= $cooldownMinutes;
     }
 }
