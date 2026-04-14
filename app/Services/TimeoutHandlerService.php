@@ -27,7 +27,16 @@ class TimeoutHandlerService
         if ($now->lt($startTime)) return;
 
         // Limit end time to now if we are currently in the period
-        $checkUntil = $now->lt($endTime) ? $now : $endTime;
+        // For past periods, check until the end time (no buffer needed)
+        if ($now->lt($endTime)) {
+            // Active period: check until now with buffer
+            $checkUntil = $now;
+            $bufferSeconds = 10; // Allow 10s buffer for active periods
+        } else {
+            // Past period: check until end time without buffer
+            $checkUntil = $endTime;
+            $bufferSeconds = 0; // No buffer for past periods
+        }
 
         // Get the latest data point for this period
         $lastData = NoiseRawData::where('device_id', $device->id)
@@ -42,9 +51,9 @@ class TimeoutHandlerService
         // Calculate expected next time (1 second after last data - ESP32 sends every 1s)
         $expectedTime = $lastTime->copy()->addSeconds(1);
 
-        // While expected time is strictly before current time check line (allow 5s buffer)
-        // We use 10s buffer to allow slight network delays before declaring timeout
-        while ($expectedTime->lte($checkUntil->copy()->subSeconds(10))) {
+        // While expected time is strictly before current time check line
+        // Use buffer for active periods, no buffer for past periods
+        while ($expectedTime->lte($checkUntil->copy()->subSeconds($bufferSeconds))) {
             
             // Avoid infinite loops - logic check
             if ($expectedTime->lt($startTime)) {
@@ -63,8 +72,13 @@ class TimeoutHandlerService
                 ->exists();
 
             if (!$exists) {
-                // Only log the timeout, don't fill the data
-                $this->logMissingPoint($device, $period, $expectedTime);
+                // Fill missing data by cloning the last available data
+                $filledData = $this->fillMissingPoint($device, $period, $expectedTime, $lastData);
+                
+                // Update lastData reference to the filled data for next iteration
+                if ($filledData) {
+                    $lastData = $filledData;
+                }
             }
 
             // Move to next expected point (every 1 second)
@@ -73,20 +87,55 @@ class TimeoutHandlerService
     }
 
     /**
-     * Log a missing data point (timeout) without filling it
+     * Fill a missing data point by cloning the last available data
+     * Returns the filled data for chaining
      */
-    private function logMissingPoint(Device $device, string $period, Carbon $timestamp)
+    private function fillMissingPoint(Device $device, string $period, Carbon $timestamp, $lastData)
     {
-        // Only create log entry, don't fill the data
+        // Log the timeout
         NoiseTimeoutLog::create([
             'device_id' => $device->id,
             'period' => $period,
             'expected_at' => $timestamp,
             'detected_at' => now(),
-            'status' => 'logged_only', // New status: just logged, not filled
+            'status' => 'filled',
         ]);
 
-        Log::info("Timeout detected for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()}");
+        // If we have previous data, clone it with new timestamp
+        if ($lastData) {
+            // Fill NoiseRawData
+            $filledData = NoiseRawData::create([
+                'device_id' => $device->id,
+                'period' => $period,
+                'noise_level' => $lastData->noise_level,
+                'temperature' => $lastData->temperature,
+                'humidity' => $lastData->humidity,
+                'measured_at' => $timestamp,
+                'is_filled' => true,
+                'fill_method' => 'copied', // Use valid enum value
+                'consecutive_timeouts' => ($lastData->consecutive_timeouts ?? 0) + 1,
+            ]);
+
+            // Also fill Telemetry table for consistency
+            \App\Models\Telemetry::create([
+                'device_id' => $device->id,
+                'temperature' => $lastData->temperature,
+                'humidity' => $lastData->humidity,
+                'noise_db' => $lastData->noise_level,
+                'measured_at' => $timestamp,
+                'is_filled' => true,
+                'fill_method' => 'copied', // Use valid enum value
+            ]);
+
+            Log::info("Filled missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} by cloning previous data");
+            
+            return $filledData;
+        } else {
+            // No previous data to clone, just log
+            Log::warning("Cannot fill missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} - no previous data available");
+            
+            return null;
+        }
     }
 
     /**

@@ -145,7 +145,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                             <CardTitle className="text-sm font-medium">Average THI</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{avgThi.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{avgThi.toFixed(2)} °C</div>
                             <p className={`text-xs mt-1 ${getThiCategory(avgThi).color}`}>
                                 {getThiCategory(avgThi).category}
                             </p>
@@ -156,7 +156,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                             <CardTitle className="text-sm font-medium">Min THI</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{minThi.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{minThi.toFixed(2)} °C</div>
                             <p className={`text-xs mt-1 ${getThiCategory(minThi).color}`}>
                                 {getThiCategory(minThi).category}
                             </p>
@@ -167,7 +167,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                             <CardTitle className="text-sm font-medium">Max THI</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{maxThi.toFixed(2)}</div>
+                            <div className="text-2xl font-bold">{maxThi.toFixed(2)} °C</div>
                             <p className={`text-xs mt-1 ${getThiCategory(maxThi).color}`}>
                                 {getThiCategory(maxThi).category}
                             </p>
@@ -284,7 +284,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                                     transform={`rotate(90, ${padding.left + plotWidth + 60}, ${padding.top + plotHeight / 2})`}
                                     fontWeight="bold"
                                 >
-                                    THI
+                                    THI (°C)
                                 </text>
 
                                 {/* X-axis */}
@@ -392,7 +392,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                         <CardTitle className="text-sm font-medium">Average THI</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{avgThi.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">{avgThi.toFixed(2)} °C</div>
                         <p className={`text-xs mt-1 ${getThiCategory(avgThi).color}`}>
                             {getThiCategory(avgThi).category}
                         </p>
@@ -403,7 +403,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                         <CardTitle className="text-sm font-medium">Min THI</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{minThi.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">{minThi.toFixed(2)} °C</div>
                         <p className={`text-xs mt-1 ${getThiCategory(minThi).color}`}>
                             {getThiCategory(minThi).category}
                         </p>
@@ -414,7 +414,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                         <CardTitle className="text-sm font-medium">Max THI</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{maxThi.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">{maxThi.toFixed(2)} °C</div>
                         <p className={`text-xs mt-1 ${getThiCategory(maxThi).color}`}>
                             {getThiCategory(maxThi).category}
                         </p>
@@ -447,7 +447,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                                             style={{ width: `${Math.min(width, 100)}%` }}
                                         >
                                             <span className={`text-sm font-bold ${category.color}`}>
-                                                {point.thi.toFixed(1)}
+                                                {point.thi.toFixed(1)} °C
                                             </span>
                                         </div>
                                     </div>
@@ -468,7 +468,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                                     <th className="text-left p-2">Time</th>
                                     <th className="text-right p-2">Temp (°C)</th>
                                     <th className="text-right p-2">Humidity (%)</th>
-                                    <th className="text-right p-2">THI</th>
+                                    <th className="text-right p-2">THI (°C)</th>
                                     <th className="text-left p-2">Status</th>
                                     <th className="text-right p-2">Data Points</th>
                                 </tr>

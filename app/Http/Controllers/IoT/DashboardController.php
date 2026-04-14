@@ -407,11 +407,10 @@ class DashboardController extends Controller
         );
 
         // Get total telemetry data collected from official period only
-        // (no buffer, consistent with new timing strategy)
+        // Include both real and filled data
         $totalCollected = \App\Models\Telemetry::where('device_id', $validated['device_id'])
             ->whereDate('measured_at', $date)
             ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
-            ->where('is_filled', false)
             ->count();
         
         // All selected data are from official period (with tolerance for closest match)
@@ -480,11 +479,11 @@ class DashboardController extends Controller
         );
 
         // Get total telemetry data collected (including 1-minute extended period)
+        // Include both real and filled data
         $extendedStart = $officialStart->copy()->subMinute();
         $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
             ->whereDate('measured_at', $date)
             ->whereBetween('measured_at', [$extendedStart, $officialEnd])
-            ->where('is_filled', false)
             ->count();
 
         // Convert to array for calculation

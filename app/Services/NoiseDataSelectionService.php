@@ -15,15 +15,15 @@ class NoiseDataSelectionService
      * 1. Static period: Always 09:00:00 - 09:10:00 (120 points @ 5s interval)
      * 2. Priority: Use real data from official period first
      * 3. Backup: If slots empty, fill with data from 1 minute before (08:59:00 - 09:00:00)
-     * 4. Timestamp manipulation: Backup data uses static timestamps (not original time)
+     * 4. Timestamp: Uses ORIGINAL timestamp from sensor (no manipulation)
      * 
      * Example for L1:
      * - Official: 09:00:00 - 09:10:00
      * - Backup: 08:59:00 - 09:00:00 (used only if needed)
-     * - Result: Always 120 data points with timestamps 09:00:00, 09:00:05, ..., 09:09:55
+     * - Result: Up to 120 data points with their ORIGINAL timestamps from sensor
      * 
      * Benefits:
-     * - Always reaches 120 data points
+     * - Shows actual sensor timestamp (transparent to user)
      * - Transparent to user (no indication of backup usage)
      * - Static timing (no dynamic adjustment)
      * - Backup data seamlessly integrated
@@ -41,9 +41,9 @@ class NoiseDataSelectionService
         $backupStart = $officialStart->copy()->subMinute();
         
         // Get all telemetry data from backup period + official period
+        // Include both real data and filled data (is_filled can be true or false)
         $allData = Telemetry::where('device_id', $deviceId)
             ->whereBetween('measured_at', [$backupStart, $officialEnd->copy()->addSeconds(10)])
-            ->where('is_filled', false) // Only real data
             ->orderBy('measured_at')
             ->get();
         
@@ -82,9 +82,10 @@ class NoiseDataSelectionService
             }
             
             if ($closest) {
-                // Clone the data and set static timestamp (manipulation)
+                // Clone the data and keep original timestamp (no manipulation)
                 $dataPoint = clone $closest;
-                $dataPoint->measured_at = $expectedTime->copy(); // Use static timestamp
+                // Keep original timestamp from sensor
+                // $dataPoint->measured_at remains as original
                 $dataPoint->is_backup = $closest->measured_at->lt($officialStart); // Track if from backup
                 
                 $selectedData->push($dataPoint);

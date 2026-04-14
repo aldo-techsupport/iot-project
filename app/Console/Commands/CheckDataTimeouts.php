@@ -76,15 +76,19 @@ class CheckDataTimeouts extends Command
                     // Normal processing for active period
                     $timeoutHandler->checkAndFillGaps($device, $periodName);
                 } elseif ($isPastPeriod) {
-                    // Past period cleanup: Force fill the rest if incomplete
-                     $this->info("    - Past period detected. Forcing clean up.");
-                    // Check count
+                    // Past period cleanup: Fill gaps first, then force calculation
+                    $this->info("    - Past period detected. Filling gaps and forcing calculation.");
+                    
+                    // Fill gaps for past period
+                    $timeoutHandler->checkAndFillGaps($device, $periodName);
+                    
+                    // Check count after filling
                     $count = NoiseRawData::where('device_id', $device->id)
                         ->where('period', $periodName)
                         ->whereDate('measured_at', $now->toDateString())
                         ->count();
                         
-                    // If we have some data but no calculation, trigger with force=true
+                    // If we have some data, trigger with force=true
                     if ($count > 0) {
                          $dashboardController->triggerCalculation(
                             $device->id,
