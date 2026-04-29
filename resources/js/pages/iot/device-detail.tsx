@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ChartDataPoint, type DeviceDetail } from '@/types/iot';
 import { Head, Link, router } from '@inertiajs/react';
-import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText, MessageSquare } from 'lucide-react';
+import { Droplets, History, RefreshCw, ThermometerSun, Volume2, Activity, BarChart3, Gauge, FileText, MessageSquare, LayoutGrid, LayoutList } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import RealTimeNoiseChart from '@/components/charts/real-time-noise-chart';
 import RealTimeTelemetryChart from '@/components/charts/real-time-telemetry-chart';
@@ -12,9 +12,11 @@ import NoiseSvgChart from '@/components/charts/noise-svg-chart';
 import ThiChart from '@/components/charts/thi-chart';
 import NoiseStatisticsPanel from '@/components/noise-statistics-panel';
 import PeriodSelector from '@/components/period-selector';
+import PeriodBarView from '@/components/period-bar-view';
 import NoiseDataModal from '@/components/noise-data-modal';
 import DailyReportPanel from '@/components/daily-report-panel';
 import DeviceTelegramSettings from '@/components/device-telegram-settings';
+import { Period } from '@/types/period';
 
 interface Props {
     device: DeviceDetail;
@@ -23,7 +25,7 @@ interface Props {
 
 interface NoiseCalculation {
     id: number;
-    period: 'L1' | 'L2' | 'L3' | 'L4';
+    period: Period;
     min_value: number;
     max_value: number;
     average_value: number;
@@ -152,24 +154,25 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
     const [activeTab, setActiveTab] = useState<'overview' | 'noise' | 'thi' | 'daily' | 'telegram'>('overview');
     const [overviewViewMode, setOverviewViewMode] = useState<'recharts' | 'svg'>('recharts');
     const [noiseViewMode, setNoiseViewMode] = useState<'recharts' | 'svg'>('recharts');
+    const [periodViewMode, setPeriodViewMode] = useState<'grid' | 'bar'>('bar'); // NEW: bar view by default
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
 
     // Noise Dashboard State
-    const [selectedPeriod, setSelectedPeriod] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L1');
+    const [selectedPeriod, setSelectedPeriod] = useState<Period>('L1');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [selectedThiDate, setSelectedThiDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [thiViewMode, setThiViewMode] = useState<'data' | 'chart'>('data');
     const [calculations, setCalculations] = useState<NoiseCalculation[]>([]);
-    const [dataCount, setDataCount] = useState<Record<'L1' | 'L2' | 'L3' | 'L4', number>>({
-        L1: 0, L2: 0, L3: 0, L4: 0,
+    const [dataCount, setDataCount] = useState<Partial<Record<Period, number>>>({
+        L1: 0, L2: 0, L3: 0, L4: 0, L5: 0, L6: 0, L7: 0, L8: 0,
     });
     const [loadingNoise, setLoadingNoise] = useState(false);
 
     // Modal state
     const [showDataModal, setShowDataModal] = useState(false);
-    const [modalPeriod, setModalPeriod] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L1');
+    const [modalPeriod, setModalPeriod] = useState<Period>('L1');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -203,9 +206,9 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                 setCalculations(calcResult.data);
             }
 
-            // Fetch counts
-            const periods: ('L1' | 'L2' | 'L3' | 'L4')[] = ['L1', 'L2', 'L3', 'L4'];
-            const counts: Record<string, number> = {};
+            // Fetch counts for all 8 periods
+            const periods: Period[] = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
+            const counts: Partial<Record<Period, number>> = {};
             await Promise.all(
                 periods.map(async (period) => {
                     try {
@@ -226,7 +229,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                     }
                 })
             );
-            setDataCount(counts as Record<'L1' | 'L2' | 'L3' | 'L4', number>);
+            setDataCount(counts);
 
         } catch (error) {
             console.error('Failed to fetch noise data:', error);
@@ -406,7 +409,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             <MetricCard
                                 title="Noise Level"
                                 value={telemetry?.noise_db ?? null}
-                                unit=" dB"
+                                unit=" dB(A)"
                                 icon={Volume2}
                                 color="text-purple-500"
                                 min={stats?.noise.min}
@@ -471,41 +474,113 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 />
                             </div>
 
-                            {/* Sub-tabs for Chart Type */}
-                            <div className="flex gap-1 md:gap-2 border rounded-lg p-1">
-                                <button
-                                    onClick={() => setNoiseViewMode('recharts')}
-                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
-                                        noiseViewMode === 'recharts'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                                >
-                                    Interactive
-                                </button>
-                                <button
-                                    onClick={() => setNoiseViewMode('svg')}
-                                    className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
-                                        noiseViewMode === 'svg'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                                >
-                                    Detailed
-                                </button>
+                            <div className="flex gap-2">
+                                {/* Period View Toggle */}
+                                <div className="flex gap-1 border rounded-lg p-1">
+                                    <button
+                                        onClick={() => setPeriodViewMode('bar')}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                                            periodViewMode === 'bar'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                        title="Bar View"
+                                    >
+                                        <LayoutList className="h-3 w-3" />
+                                        Bar
+                                    </button>
+                                    <button
+                                        onClick={() => setPeriodViewMode('grid')}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                                            periodViewMode === 'grid'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                        title="Grid View"
+                                    >
+                                        <LayoutGrid className="h-3 w-3" />
+                                        Grid
+                                    </button>
+                                </div>
+
+                                {/* Chart Type Toggle */}
+                                <div className="flex gap-1 border rounded-lg p-1">
+                                    <button
+                                        onClick={() => setNoiseViewMode('recharts')}
+                                        className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
+                                            noiseViewMode === 'recharts'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        Interactive
+                                    </button>
+                                    <button
+                                        onClick={() => setNoiseViewMode('svg')}
+                                        className={`px-2 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded transition-colors whitespace-nowrap ${
+                                            noiseViewMode === 'svg'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        Detailed
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <div className="grid gap-6">
-                            <PeriodSelector
-                                selectedPeriod={selectedPeriod}
-                                onChange={setSelectedPeriod}
-                                dataCount={dataCount}
-                                onPeriodDoubleClick={(period) => {
-                                    setModalPeriod(period);
-                                    setShowDataModal(true);
-                                }}
-                            />
+                            {/* Conditional Period View */}
+                            {periodViewMode === 'bar' ? (
+                                <PeriodBarView
+                                    calculations={(() => {
+                                        const allPeriods: Period[] = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
+                                        const result: Partial<Record<Period, any>> = {};
+                                        
+                                        // First, populate from calculations
+                                        calculations.forEach((calc) => {
+                                            result[calc.period as Period] = {
+                                                leq_value: calc.leq_value,
+                                                average_value: calc.average_value,
+                                                data_count: dataCount[calc.period as Period] || calc.data_count || 0,
+                                                min_value: calc.min_value,
+                                                max_value: calc.max_value,
+                                            };
+                                        });
+                                        
+                                        // Then, add periods that have dataCount but no calculations yet
+                                        allPeriods.forEach((period) => {
+                                            if (!result[period] && dataCount[period] && dataCount[period]! > 0) {
+                                                result[period] = {
+                                                    leq_value: 0,
+                                                    average_value: 0,
+                                                    data_count: dataCount[period]!,
+                                                    min_value: 0,
+                                                    max_value: 0,
+                                                };
+                                            }
+                                        });
+                                        
+                                        return result;
+                                    })()}
+                                    selectedPeriod={selectedPeriod as Period}
+                                    onPeriodClick={(period) => setSelectedPeriod(period as any)}
+                                    onPeriodDoubleClick={(period) => {
+                                        setModalPeriod(period);
+                                        setShowDataModal(true);
+                                    }}
+                                />
+                            ) : (
+                                <PeriodSelector
+                                    selectedPeriod={selectedPeriod}
+                                    onChange={setSelectedPeriod}
+                                    dataCount={dataCount}
+                                    onPeriodDoubleClick={(period) => {
+                                        setModalPeriod(period);
+                                        setShowDataModal(true);
+                                    }}
+                                />
+                            )}
 
                             <NoiseStatisticsPanel calculation={currentCalculation || null} loading={loadingNoise} />
 

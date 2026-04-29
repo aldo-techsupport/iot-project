@@ -106,7 +106,7 @@ class TelemetryController extends Controller
                 'fill_method' => 'actual',
             ]);
             
-            // Check if we have 120 data points
+            // Check if we have 720 data points
             $count = NoiseRawData::where('device_id', $device->id)
                 ->where('period', $period)
                 ->whereDate('measured_at', now()->toDateString())
@@ -115,11 +115,11 @@ class TelemetryController extends Controller
             $noiseMonitoring = [
                 'period' => $period,
                 'count' => $count,
-                'target' => 120,
+                'target' => 720,
             ];
             
-            // Auto-trigger calculation if 120 data points reached
-            if ($count >= 120) {
+            // Auto-trigger calculation if 720 data points reached
+            if ($count >= 720) {
                 try {
                     $dashboardController = app(DashboardController::class);
                     $response = $dashboardController->triggerCalculation(
@@ -136,7 +136,7 @@ class TelemetryController extends Controller
                             ->whereDate('calculation_date', now()->toDateString())
                             ->count();
                         
-                        if ($periodsComplete >= 4) {
+                        if ($periodsComplete >= 8) {
                             try {
                                 $dashboardController->calculateDailySummary(
                                     new Request(['device_id' => $device->id])
@@ -172,24 +172,38 @@ class TelemetryController extends Controller
 
     /**
      * Detect current monitoring period based on time
-     * Returns L1, L2, L3, L4, or null if not in monitoring period
+     * Returns L1-L8, or null if not in monitoring period
+     * Skip 12:00-13:00 (lunch break)
      */
     private function detectPeriod(): ?string
     {
         $hour = now()->hour;
-        $minute = now()->minute;
         
-        // L1: 09:00-09:10 (mewakili 08:00-10:00)
-        if ($hour == 9 && $minute < 10) return 'L1';
+        // L1: 08:00-09:00
+        if ($hour == 8) return 'L1';
         
-        // L2: 11:00-11:10 (mewakili 10:00-12:00)
-        if ($hour == 11 && $minute < 10) return 'L2';
+        // L2: 09:00-10:00
+        if ($hour == 9) return 'L2';
         
-        // L3: 14:00-14:10 (mewakili 13:00-15:00)
-        if ($hour == 14 && $minute < 10) return 'L3';
+        // L3: 10:00-11:00
+        if ($hour == 10) return 'L3';
         
-        // L4: 16:00-16:10 (mewakili 15:00-17:00)
-        if ($hour == 16 && $minute < 10) return 'L4';
+        // L4: 11:00-12:00
+        if ($hour == 11) return 'L4';
+        
+        // SKIP: 12:00-13:00 (lunch break)
+        
+        // L5: 13:00-14:00
+        if ($hour == 13) return 'L5';
+        
+        // L6: 14:00-15:00
+        if ($hour == 14) return 'L6';
+        
+        // L7: 15:00-16:00
+        if ($hour == 15) return 'L7';
+        
+        // L8: 16:00-17:00
+        if ($hour == 16) return 'L8';
         
         return null;
     }

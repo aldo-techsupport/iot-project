@@ -137,7 +137,7 @@ export default function RealTimeTelemetryChart({ data }: RealTimeTelemetryChartP
                             />
                             <YAxis
                                 yAxisId="left"
-                                label={{ value: 'Noise (dB)', angle: -90, position: 'insideLeft', fill: "hsl(var(--muted-foreground))" }}
+                                label={{ value: 'Noise (dB(A))', angle: -90, position: 'insideLeft', fill: "hsl(var(--muted-foreground))" }}
                                 tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                                 tickLine={false}
                                 axisLine={false}
@@ -160,7 +160,7 @@ export default function RealTimeTelemetryChart({ data }: RealTimeTelemetryChartP
                                 strokeWidth={2}
                                 dot={false}
                                 activeDot={{ r: 6, strokeWidth: 0 }}
-                                name="Noise Level (dB)"
+                                name="Noise Level (dB(A))"
                                 animationDuration={300}
                             />
                             <Line

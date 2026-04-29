@@ -183,17 +183,17 @@ class WhatsAppAlertService
                     break;
 
                 case 2:
-                    $message = "2️⃣ *dB > 85*\n\n";
+                    $message = "2️⃣ *dB(A) > 85*\n\n";
                     $message .= "⚠️ *PERINGATAN KEBISINGAN!*\n\n";
-                    $message .= "Tingkat kebisingan melebihi 85 dB.\n";
+                    $message .= "Tingkat kebisingan melebihi 85 dB(A).\n";
                     $message .= "Suara sudah berada di ambang batas yang dapat mengganggu kenyamanan dan kesehatan.\n\n";
                     $message .= "Segera evaluasi sumber kebisingan.\n\n";
                     break;
 
                 case 3:
-                    $message = "3️⃣ *dB > 85 & THI > 29*\n\n";
+                    $message = "3️⃣ *dB(A) > 85 & THI > 29*\n\n";
                     $message .= "🚨 *PERINGATAN KRITIS!*\n\n";
-                    $message .= "Kebisingan > 85 dB\n";
+                    $message .= "Kebisingan > 85 dB(A)\n";
                     $message .= "*dan*\n";
                     $message .= "THI > 29 (Kondisi Panas)\n\n";
                     $message .= "Lingkungan dalam kondisi tidak nyaman dan berisiko.\n\n";
@@ -201,17 +201,17 @@ class WhatsAppAlertService
                     break;
 
                 case 4:
-                    $message = "4️⃣ *dB > 100*\n\n";
+                    $message = "4️⃣ *dB(A) > 100*\n\n";
                     $message .= "🚨 *BAHAYA KEBISINGAN TINGGI!*\n\n";
-                    $message .= "Tingkat kebisingan melebihi 100 dB.\n";
+                    $message .= "Tingkat kebisingan melebihi 100 dB(A).\n";
                     $message .= "Berpotensi merusak pendengaran jika terpapar dalam waktu lama.\n\n";
                     $message .= "Gunakan pelindung telinga dan periksa sumber suara segera!\n\n";
                     break;
 
                 case 5:
-                    $message = "5️⃣ *dB > 100 & THI > 29*\n\n";
+                    $message = "5️⃣ *dB(A) > 100 & THI > 29*\n\n";
                     $message .= "🚨🚨 *KONDISI DARURAT!*\n\n";
-                    $message .= "Kebisingan > 100 dB\n";
+                    $message .= "Kebisingan > 100 dB(A)\n";
                     $message .= "*dan*\n";
                     $message .= "THI > 29 (Suhu Ekstrem)\n\n";
                     $message .= "Lingkungan sangat berbahaya dan tidak aman.\n\n";
@@ -223,7 +223,7 @@ class WhatsAppAlertService
         $message .= "📍 Device: *{$deviceName}*\n";
         $message .= "⏰ {$timestamp} WIB\n\n";
         $message .= "📊 *Data Saat Ini:*\n";
-        $message .= "   🔊 Noise: " . number_format($noiseDb, 2) . " dB\n";
+        $message .= "   🔊 Noise: " . number_format($noiseDb, 2) . " dB(A)\n";
         $message .= "   🌡️ THI: " . number_format($thi, 2) . "\n";
 
         return $message;

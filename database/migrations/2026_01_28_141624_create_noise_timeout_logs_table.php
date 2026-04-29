@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('noise_timeout_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('device_id')->constrained()->onDelete('cascade');
-            $table->enum('period', ['L1', 'L2', 'L3', 'L4']);
+            $table->enum('period', ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8']);
             $table->timestamp('expected_at');
             $table->enum('action_taken', ['copied_previous', 'filled_zero']);
             $table->integer('consecutive_count');

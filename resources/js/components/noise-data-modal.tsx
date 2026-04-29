@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Period } from '@/types/period';
 
 interface NoiseDataPoint {
     noise_level: number;
@@ -16,13 +17,14 @@ interface NoiseDataModalProps {
     onClose: () => void;
     deviceId: number;
     deviceName: string;
-    period: 'L1' | 'L2' | 'L3' | 'L4';
+    period: Period;
     date: string;
 }
 
 export default function NoiseDataModal({ open, onClose, deviceId, deviceName, period, date }: NoiseDataModalProps) {
     const [data, setData] = useState<NoiseDataPoint[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [totalCollected, setTotalCollected] = useState(0);
     const [fromOfficial, setFromOfficial] = useState(0);
 
@@ -34,22 +36,35 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
 
     const fetchData = async () => {
         setLoading(true);
+        setError(null);
         try {
             const params = new URLSearchParams({
                 device_id: deviceId.toString(),
                 period,
                 date,
             });
+            console.log('Fetching noise data:', { deviceId, period, date });
             const response = await fetch(`/api/v1/iot/noise-data/realtime?${params}`);
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
+            console.log('Response data:', result);
 
             if (result.success) {
-                setData(result.data);
+                setData(result.data || []);
                 setTotalCollected(result.total_collected || 0);
                 setFromOfficial(result.from_official_period || 0);
+            } else {
+                setError('Failed to load data from server');
+                console.error('API returned success: false', result);
             }
         } catch (error) {
             console.error('Failed to fetch data:', error);
+            setError(error instanceof Error ? error.message : 'Failed to fetch data');
         } finally {
             setLoading(false);
         }
@@ -86,6 +101,20 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="text-muted-foreground">Loading data...</div>
+                    </div>
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                        <div className="text-red-500">{error}</div>
+                        <button
+                            onClick={fetchData}
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                ) : data.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-muted-foreground">No data available for this period</div>
                     </div>
                 ) : (
                     <>

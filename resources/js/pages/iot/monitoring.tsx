@@ -275,7 +275,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                             <p className={`text-2xl font-semibold ${safety.color}`}>
                                                                 {calc.leq_value.toFixed(2)}
                                                             </p>
-                                                            <p className="text-xs text-muted-foreground">dB</p>
+                                                            <p className="text-xs text-muted-foreground">dB(A)</p>
                                                             <p className="text-xs mt-1">{calc.data_count} periods</p>
                                                         </div>
                                                         <div className="text-center">
@@ -283,7 +283,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                             <p className="text-2xl font-semibold text-green-600">
                                                                 {calc.min_value.toFixed(1)}
                                                             </p>
-                                                            <p className="text-xs text-muted-foreground">dB</p>
+                                                            <p className="text-xs text-muted-foreground">dB(A)</p>
                                                             <p className="text-xs mt-1">Lowest recorded</p>
                                                         </div>
                                                         <div className="text-center">
@@ -291,7 +291,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                             <p className="text-2xl font-semibold text-red-600">
                                                                 {calc.max_value.toFixed(1)}
                                                             </p>
-                                                            <p className="text-xs text-muted-foreground">dB</p>
+                                                            <p className="text-xs text-muted-foreground">dB(A)</p>
                                                             <p className="text-xs mt-1">Highest recorded</p>
                                                         </div>
                                                     </div>
@@ -306,7 +306,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                             <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">Noise</p>
-                                                    <p className="text-lg font-semibold">{device.latest_telemetry.noise_db} dB</p>
+                                                    <p className="text-lg font-semibold">{device.latest_telemetry.noise_db} dB(A)</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">Temp</p>
@@ -355,7 +355,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                         <span className="text-sm font-medium">{period}</span>
                                                         {calc ? (
                                                             <Badge variant="default" className={safety?.color}>
-                                                                {calc.leq_value.toFixed(2)} dB
+                                                                {calc.leq_value.toFixed(2)} dB(A)
                                                             </Badge>
                                                         ) : (
                                                             <Badge variant="outline" className="text-gray-500">No Data</Badge>
@@ -370,7 +370,7 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                                 Data: {calc.data_count} points
                                                             </div>
                                                             <div className="text-muted-foreground">
-                                                                Range: {calc.min_value} - {calc.max_value} dB
+                                                                Range: {calc.min_value} - {calc.max_value} dB(A)
                                                             </div>
                                                         </div>
                                                     )}
@@ -390,13 +390,13 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                             <div>
                                                 <p className="text-xs text-green-700 dark:text-green-300">Ls</p>
                                                 <p className="font-semibold text-green-900 dark:text-green-100">
-                                                    {device.daily_summary.ls_value.toFixed(2)} dB
+                                                    {device.daily_summary.ls_value.toFixed(2)} dB(A)
                                                 </p>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-green-700 dark:text-green-300">TWA</p>
                                                 <p className="font-semibold text-green-900 dark:text-green-100">
-                                                    {device.daily_summary.twa_value.toFixed(2)} dB
+                                                    {device.daily_summary.twa_value.toFixed(2)} dB(A)
                                                 </p>
                                             </div>
                                             <div>

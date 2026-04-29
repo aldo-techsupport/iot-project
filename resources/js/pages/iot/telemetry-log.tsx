@@ -174,7 +174,7 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-sm font-mono">{t.temperature}°C</td>
                                                 <td className="px-4 py-3 text-right text-sm font-mono">{t.humidity}%</td>
-                                                <td className="px-4 py-3 text-right text-sm font-mono">{t.noise_db} dB</td>
+                                                <td className="px-4 py-3 text-right text-sm font-mono">{t.noise_db} dB(A)</td>
                                             </tr>
                                         ))
                                     )}

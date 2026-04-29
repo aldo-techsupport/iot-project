@@ -8,19 +8,19 @@ use Carbon\Carbon;
 class NoiseDataSelectionService
 {
     /**
-     * Select exactly 120 data points at 5-second intervals from 24-hour telemetry data
+     * Select exactly 720 data points at 5-second intervals from 24-hour telemetry data
      * 
      * STRATEGY: Static timing with silent backup fallback
      * 
-     * 1. Static period: Always 09:00:00 - 09:10:00 (120 points @ 5s interval)
+     * 1. Static period: Always 1 hour (720 points @ 5s interval)
      * 2. Priority: Use real data from official period first
-     * 3. Backup: If slots empty, fill with data from 1 minute before (08:59:00 - 09:00:00)
+     * 3. Backup: If slots empty, fill with data from 5 minutes before period start
      * 4. Timestamp: Uses ORIGINAL timestamp from sensor (no manipulation)
      * 
      * Example for L1:
-     * - Official: 09:00:00 - 09:10:00
-     * - Backup: 08:59:00 - 09:00:00 (used only if needed)
-     * - Result: Up to 120 data points with their ORIGINAL timestamps from sensor
+     * - Official: 08:00:00 - 09:00:00 (1 hour)
+     * - Backup: 07:55:00 - 08:00:00 (5 minutes before, used only if needed)
+     * - Result: Up to 720 data points with their ORIGINAL timestamps from sensor
      * 
      * Benefits:
      * - Shows actual sensor timestamp (transparent to user)
@@ -37,8 +37,8 @@ class NoiseDataSelectionService
         // Ensure start time is at 00 seconds
         $officialStart->second(0);
         
-        // Get backup data from 1 minute before official start
-        $backupStart = $officialStart->copy()->subMinute();
+        // Get backup data from 5 minutes before official start
+        $backupStart = $officialStart->copy()->subMinutes(5);
         
         // Get all telemetry data from backup period + official period
         // Include both real data and filled data (is_filled can be true or false)
@@ -47,12 +47,12 @@ class NoiseDataSelectionService
             ->orderBy('measured_at')
             ->get();
         
-        // Generate 120 expected timestamps at 5-second intervals starting from 00 seconds
-        // Example: 09:00:00, 09:00:05, 09:00:10, ..., 09:09:55
+        // Generate 720 expected timestamps at 5-second intervals starting from 00 seconds
+        // Example: 08:00:00, 08:00:05, 08:00:10, ..., 08:59:55
         $expectedTimestamps = [];
         $current = $officialStart->copy();
         
-        for ($i = 0; $i < 120; $i++) {
+        for ($i = 0; $i < 720; $i++) {
             $expectedTimestamps[] = $current->copy();
             $current->addSeconds(5);
         }
@@ -71,7 +71,7 @@ class NoiseDataSelectionService
                 return abs($d->measured_at->timestamp - $expectedTime->timestamp);
             })->first();
             
-            // Priority 2: If not found, use backup data from 1 minute before
+            // Priority 2: If not found, use backup data from 5 minutes before
             if (!$closest) {
                 $closest = $allData->filter(function($d) use ($usedIds, $officialStart) {
                     return !in_array($d->id, $usedIds) && 
@@ -93,7 +93,7 @@ class NoiseDataSelectionService
             }
         }
         
-        // Return selected data (should always be 120 if backup data available)
+        // Return selected data (should always be 720 if backup data available)
         return $selectedData;
     }
 }

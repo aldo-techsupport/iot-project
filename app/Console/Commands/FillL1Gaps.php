@@ -12,7 +12,7 @@ use Carbon\Carbon;
 class FillL1Gaps extends Command
 {
     protected $signature = 'iot:fill-l1-gaps {device_id} {date?}';
-    protected $description = 'Fill gaps in L1 data to reach 120 data points';
+    protected $description = 'Fill gaps in L1 data to reach 720 data points (1 hour)';
 
     public function handle()
     {
@@ -27,8 +27,8 @@ class FillL1Gaps extends Command
         
         $this->info("Filling L1 gaps for {$device->name} on {$date}");
         
-        $start = Carbon::parse("{$date} 09:00:00");
-        $end = Carbon::parse("{$date} 09:10:00");
+        $start = Carbon::parse("{$date} 08:00:00");
+        $end = Carbon::parse("{$date} 09:00:00");
         
         // Get existing data
         $existingData = Telemetry::where('device_id', $deviceId)

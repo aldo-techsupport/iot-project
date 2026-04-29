@@ -98,10 +98,14 @@ class BackfillDailySummaries extends Command
 
                 // Prepare data for Ls calculation (8 hours work day)
                 $periodData = [
-                    ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 2],
-                    ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 2],
-                    ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 2],
-                    ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 2],
+                    ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L5', 'leq' => $calculations->get('L5')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L6', 'leq' => $calculations->get('L6')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L7', 'leq' => $calculations->get('L7')->leq_value, 'duration_hours' => 1],
+                    ['period' => 'L8', 'leq' => $calculations->get('L8')->leq_value, 'duration_hours' => 1],
                 ];
 
                 // Calculate Ls
@@ -125,6 +129,10 @@ class BackfillDailySummaries extends Command
                     'l2_leq' => $periodData[1]['leq'],
                     'l3_leq' => $periodData[2]['leq'],
                     'l4_leq' => $periodData[3]['leq'],
+                    'l5_leq' => $periodData[4]['leq'],
+                    'l6_leq' => $periodData[5]['leq'],
+                    'l7_leq' => $periodData[6]['leq'],
+                    'l8_leq' => $periodData[7]['leq'],
                 ]);
 
                 $this->line("  ✅ {$dateStr} - Created (Ls: {$ls} dB)");

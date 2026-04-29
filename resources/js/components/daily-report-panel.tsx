@@ -363,28 +363,28 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     <span className="text-sm font-medium">L1</span>
                                     <Badge variant="outline">2 hours</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l1_leq.toFixed(2)} dB</p>
+                                <p className="text-2xl font-bold">{summary.l1_leq.toFixed(2)} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L2</span>
                                     <Badge variant="outline">2 hours</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l2_leq.toFixed(2)} dB</p>
+                                <p className="text-2xl font-bold">{summary.l2_leq.toFixed(2)} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L3</span>
                                     <Badge variant="outline">2 hours</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l3_leq.toFixed(2)} dB</p>
+                                <p className="text-2xl font-bold">{summary.l3_leq.toFixed(2)} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L4</span>
                                     <Badge variant="outline">2 hours</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l4_leq.toFixed(2)} dB</p>
+                                <p className="text-2xl font-bold">{summary.l4_leq.toFixed(2)} dB(A)</p>
                             </div>
                         </div>
                     </div>

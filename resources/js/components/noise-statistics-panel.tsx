@@ -39,7 +39,7 @@ export default function NoiseStatisticsPanel({ calculation, loading }: NoiseStat
                     <span className="font-medium">No calculation results yet.</span>
                 </div>
                 <p className="mt-1 text-sm opacity-90 pl-7">
-                    Calculations are performed automatically after 120 data points are collected for a period.
+                    Calculations are performed automatically after 720 data points are collected for a period.
                 </p>
             </div>
         );

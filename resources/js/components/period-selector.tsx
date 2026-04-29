@@ -1,20 +1,16 @@
 import { cn } from '@/lib/utils';
 import { Check, Clock } from 'lucide-react';
+import { Period, PERIODS } from '@/types/period';
 
 interface PeriodSelectorProps {
-    selectedPeriod: 'L1' | 'L2' | 'L3' | 'L4';
-    onChange: (period: 'L1' | 'L2' | 'L3' | 'L4') => void;
-    dataCount?: Record<'L1' | 'L2' | 'L3' | 'L4', number>;
-    onPeriodDoubleClick?: (period: 'L1' | 'L2' | 'L3' | 'L4') => void;
+    selectedPeriod: Period;
+    onChange: (period: Period) => void;
+    dataCount?: Record<Period, number>;
+    onPeriodDoubleClick?: (period: Period) => void;
 }
 
 export default function PeriodSelector({ selectedPeriod, onChange, dataCount, onPeriodDoubleClick }: PeriodSelectorProps) {
-    const periods = [
-        { value: 'L1', label: 'L1 (09:00)', subLabel: '08:00 - 10:00', targetRange: '09:00 - 09:10' },
-        { value: 'L2', label: 'L2 (11:00)', subLabel: '10:00 - 12:00', targetRange: '11:00 - 11:10' },
-        { value: 'L3', label: 'L3 (14:00)', subLabel: '13:00 - 15:00', targetRange: '14:00 - 14:10' },
-        { value: 'L4', label: 'L4 (16:00)', subLabel: '15:00 - 17:00', targetRange: '16:00 - 16:10' },
-    ] as const;
+    const periods = PERIODS;
 
     const getCurrentPeriod = () => {
         const hour = new Date().getHours();
@@ -31,7 +27,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {periods.map((period) => {
                 const count = dataCount?.[period.value] || 0;
-                const isComplete = count >= 120;
+                const isComplete = count >= 720;
                 const isSelected = selectedPeriod === period.value;
                 const isCurrent = currentPeriod === period.value;
 
@@ -70,7 +66,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
                                         className={cn("h-full transition-all duration-500",
                                             isComplete ? "bg-green-500" : "bg-primary"
                                         )}
-                                        style={{ width: `${Math.min((count / 120) * 100, 100)}%` }}
+                                        style={{ width: `${Math.min((count / 720) * 100, 100)}%` }}
                                     />
                                 </div>
                             </div>
@@ -78,7 +74,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
                                 "text-xs font-medium",
                                 isComplete ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                             )}>
-                                {count}/120
+                                {count}/720
                             </span>
                         </div>
 

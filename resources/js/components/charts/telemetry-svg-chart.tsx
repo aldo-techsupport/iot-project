@@ -333,7 +333,7 @@ export default function TelemetrySvgChart({ data }: TelemetrySvgChartProps) {
                                             </text>
                                             {/* Noise */}
                                             <text x={getX(i) + 15} y={padding.top + 74} fontSize="10" fill="#a855f7">
-                                                Noise: {d.noise_db.toFixed(1)} dB
+                                                Noise: {d.noise_db.toFixed(1)} dB(A)
                                             </text>
                                         </g>
                                     )}

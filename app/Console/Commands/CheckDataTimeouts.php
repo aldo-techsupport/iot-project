@@ -35,11 +35,17 @@ class CheckDataTimeouts extends Command
         
         // Official period times - exact timing starting at 00 seconds
         // Data collection uses these exact times with tolerance for finding closest data
+        // Skip 12:00-13:00 (lunch break)
         $periods = [
-            'L1' => ['start' => '09:00', 'end' => '09:10'],
-            'L2' => ['start' => '11:00', 'end' => '11:10'],
-            'L3' => ['start' => '14:00', 'end' => '14:10'],
-            'L4' => ['start' => '16:00', 'end' => '16:10'],
+            'L1' => ['start' => '08:00', 'end' => '09:00'],
+            'L2' => ['start' => '09:00', 'end' => '10:00'],
+            'L3' => ['start' => '10:00', 'end' => '11:00'],
+            'L4' => ['start' => '11:00', 'end' => '12:00'],
+            // SKIP: 12:00-13:00 (lunch break)
+            'L5' => ['start' => '13:00', 'end' => '14:00'],
+            'L6' => ['start' => '14:00', 'end' => '15:00'],
+            'L7' => ['start' => '15:00', 'end' => '16:00'],
+            'L8' => ['start' => '16:00', 'end' => '17:00'],
         ];
 
         $devices = Device::where('is_active', true)->get();
@@ -125,20 +131,20 @@ class CheckDataTimeouts extends Command
                     ->whereDate('measured_at', $now->toDateString())
                     ->count();
 
-                if ($count >= 120) {
+                if ($count >= 720) {
                     $dashboardController->triggerCalculation(
                         $device->id,
                         $periodName,
                         $now->toDateString()
                     );
-                    $this->info("  - 120 points reached. Calculation triggered.");
+                    $this->info("  - 720 points reached. Calculation triggered.");
                     
                     // Check if all periods complete, trigger daily summary
                     $periodsComplete = NoiseCalculation::where('device_id', $device->id)
                         ->whereDate('calculation_date', $now->toDateString())
                         ->count();
                     
-                    if ($periodsComplete >= 4) {
+                    if ($periodsComplete >= 8) {
                         try {
                             $dashboardController->calculateDailySummary(
                                 new \Illuminate\Http\Request(['device_id' => $device->id])

@@ -141,6 +141,34 @@ class DashboardController extends Controller
                                     'max_value' => $calculations->get('L4')->max_value,
                                     'created_at' => $calculations->get('L4')->created_at->toIso8601String(),
                                 ] : null,
+                                'L5' => $calculations->get('L5') ? [
+                                    'leq_value' => $calculations->get('L5')->leq_value,
+                                    'data_count' => $calculations->get('L5')->data_count,
+                                    'min_value' => $calculations->get('L5')->min_value,
+                                    'max_value' => $calculations->get('L5')->max_value,
+                                    'created_at' => $calculations->get('L5')->created_at->toIso8601String(),
+                                ] : null,
+                                'L6' => $calculations->get('L6') ? [
+                                    'leq_value' => $calculations->get('L6')->leq_value,
+                                    'data_count' => $calculations->get('L6')->data_count,
+                                    'min_value' => $calculations->get('L6')->min_value,
+                                    'max_value' => $calculations->get('L6')->max_value,
+                                    'created_at' => $calculations->get('L6')->created_at->toIso8601String(),
+                                ] : null,
+                                'L7' => $calculations->get('L7') ? [
+                                    'leq_value' => $calculations->get('L7')->leq_value,
+                                    'data_count' => $calculations->get('L7')->data_count,
+                                    'min_value' => $calculations->get('L7')->min_value,
+                                    'max_value' => $calculations->get('L7')->max_value,
+                                    'created_at' => $calculations->get('L7')->created_at->toIso8601String(),
+                                ] : null,
+                                'L8' => $calculations->get('L8') ? [
+                                    'leq_value' => $calculations->get('L8')->leq_value,
+                                    'data_count' => $calculations->get('L8')->data_count,
+                                    'min_value' => $calculations->get('L8')->min_value,
+                                    'max_value' => $calculations->get('L8')->max_value,
+                                    'created_at' => $calculations->get('L8')->created_at->toIso8601String(),
+                                ] : null,
                             ],
                             'daily_summary' => $dailySummary ? [
                                 'ls_value' => $dailySummary->ls_value,
@@ -300,7 +328,7 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'device_id' => ['required', 'exists:devices,id'],
-            'period' => ['required', 'in:L1,L2,L3,L4'],
+            'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
             'noise_level' => ['required', 'numeric', 'min:0', 'max:200'],
             'temperature' => ['nullable', 'numeric'],
             'humidity' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -316,16 +344,16 @@ class DashboardController extends Controller
         ]);
 
         // Check if we have enough data points for this period today
-        // Note: Since we store every second, we'll have ~600 points per 10-min period
-        // We select 120 points at 5-second intervals during retrieval
+        // Note: Since we store every 5 seconds, we'll have 720 points per 1-hour period
+        // We select 720 points at 5-second intervals during retrieval
         $count = NoiseRawData::where('device_id', $validated['device_id'])
             ->where('period', $validated['period'])
             ->whereDate('measured_at', $measuredAt->toDateString())
             ->count();
 
-        // Auto-trigger calculation if we have enough data (>= 120)
+        // Auto-trigger calculation if we have enough data (>= 720)
         // The calculation will select appropriate 5-second interval data
-        if ($count >= 120) {
+        if ($count >= 720) {
             $this->triggerCalculation(
                 $validated['device_id'],
                 $validated['period'],
@@ -348,7 +376,7 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'device_id' => ['required', 'exists:devices,id'],
-            'period' => ['nullable', 'in:L1,L2,L3,L4'],
+            'period' => ['nullable', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
             'date' => ['nullable', 'date'],
         ]);
 
@@ -380,19 +408,23 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'device_id' => ['required', 'exists:devices,id'],
-            'period' => ['required', 'in:L1,L2,L3,L4'],
+            'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
             'date' => ['nullable', 'date'],
         ]);
 
         $date = $validated['date'] ?? now()->toDateString();
         $period = $validated['period'];
 
-        // Get official period times
+        // Get official period times (8 periods, skip 12:00-13:00 lunch break)
         $periodTimes = [
-            'L1' => ['start' => '09:00:00', 'end' => '09:10:00'],
-            'L2' => ['start' => '11:00:00', 'end' => '11:10:00'],
-            'L3' => ['start' => '14:00:00', 'end' => '14:10:00'],
-            'L4' => ['start' => '16:00:00', 'end' => '16:10:00'],
+            'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
+            'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
+            'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
+            'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
+            'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
+            'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
+            'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
+            'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
         ];
 
         $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
@@ -449,7 +481,7 @@ class DashboardController extends Controller
         if ($deviceId === null && request()->has('device_id')) {
             $validated = request()->validate([
                 'device_id' => ['required', 'exists:devices,id'],
-                'period' => ['required', 'in:L1,L2,L3,L4'],
+                'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
                 'date' => ['nullable', 'date'],
                 'force' => ['nullable', 'boolean'],
             ]);
@@ -459,12 +491,16 @@ class DashboardController extends Controller
             $force = $validated['force'] ?? false;
         }
 
-        // Get official period times
+        // Get official period times (8 periods, skip 12:00-13:00 lunch break)
         $periodTimes = [
-            'L1' => ['start' => '09:00:00', 'end' => '09:10:00'],
-            'L2' => ['start' => '11:00:00', 'end' => '11:10:00'],
-            'L3' => ['start' => '14:00:00', 'end' => '14:10:00'],
-            'L4' => ['start' => '16:00:00', 'end' => '16:10:00'],
+            'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
+            'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
+            'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
+            'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
+            'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
+            'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
+            'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
+            'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
         ];
 
         $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
@@ -538,7 +574,7 @@ class DashboardController extends Controller
                 'data_used' => $dataCount,
                 'total_collected' => $totalCollected,
                 'from_official_period' => $dataCount, // All data is from official period
-                'collection_strategy' => $dataCount >= 120 ? 'full_dataset' : 'real_data_only',
+                'collection_strategy' => $dataCount >= 720 ? 'full_dataset' : 'real_data_only',
             ],
         ]);
     }
@@ -563,21 +599,25 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('period');
         
-        if ($calculations->count() < 4) {
+        if ($calculations->count() < 8) {
             return response()->json([
                 'success' => false,
-                'message' => 'Need all 4 periods (L1-L4) to calculate daily summary. Found: ' . $calculations->count(),
+                'message' => 'Need all 8 periods (L1-L8) to calculate daily summary. Found: ' . $calculations->count(),
                 'available_periods' => $calculations->pluck('period')->toArray(),
             ], 400);
         }
         
         // Prepare data for Ls calculation
-        // Based on 8 hours work day: L1=2h, L2=2h, L3=2h, L4=2h (total 8h)
+        // Based on 8 hours work day: L1-L8 = 1h each (total 8h, skip 12-13 lunch)
         $periodData = [
-            ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 2],
-            ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 2],
-            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 2],
-            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 2],
+            ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L5', 'leq' => $calculations->get('L5')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L6', 'leq' => $calculations->get('L6')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L7', 'leq' => $calculations->get('L7')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L8', 'leq' => $calculations->get('L8')->leq_value, 'duration_hours' => 1],
         ];
         
         $statsService = new NoiseStatisticsService();
@@ -614,6 +654,10 @@ class DashboardController extends Controller
                 'l2_leq' => $periodData[1]['leq'],
                 'l3_leq' => $periodData[2]['leq'],
                 'l4_leq' => $periodData[3]['leq'],
+                'l5_leq' => $periodData[4]['leq'],
+                'l6_leq' => $periodData[5]['leq'],
+                'l7_leq' => $periodData[6]['leq'],
+                'l8_leq' => $periodData[7]['leq'],
             ]
         );
         
@@ -656,7 +700,7 @@ class DashboardController extends Controller
                 ->whereDate('calculation_date', $date)
                 ->get();
             
-            if ($calculations->count() === 4) {
+            if ($calculations->count() === 8) {
                 // Auto-calculate
                 $calcRequest = new Request([
                     'device_id' => $deviceId,
@@ -740,7 +784,7 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'device_id' => ['required', 'exists:devices,id'],
-            'period' => ['required', 'in:L1,L2,L3,L4'],
+            'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
             'date' => ['nullable', 'date'],
         ]);
 

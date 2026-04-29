@@ -23,7 +23,7 @@ class NoiseStatisticsService
         return $max - $min;
     }
 
-    public function calculateClassCount(int $dataCount = 120): float
+    public function calculateClassCount(int $dataCount = 720): float
     {
         return 1 + (3.3 * log10($dataCount));
     }
@@ -166,15 +166,15 @@ class NoiseStatisticsService
 
     /**
      * Calculate Ls (Leq Siang - Daytime Average Noise Level)
-     * Formula: Ls = 10 × log10(1/8 × Σ(Ti × 10^(0.1×Li)))
+     * Formula: Ls = 10 × log10(1/720 × Σ(Ti × 10^(0.1×Li)))
      * 
-     * @param array $periodData Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 2]
+     * @param array $periodData Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 1]
      * @return float Ls value in dB
      */
     public function calculateLs(array $periodData): float
     {
         $sum = 0;
-        $totalHours = 8; // Total daytime hours (8 jam kerja)
+        $totalDataPoints = 720; // Total data points per period (1 hour @ 5s interval)
         
         foreach ($periodData as $data) {
             $Ti = $data['duration_hours'];
@@ -184,8 +184,8 @@ class NoiseStatisticsService
             $sum += $Ti * pow(10, 0.1 * $Li);
         }
         
-        // Calculate: 10 × log10(1/8 × sum)
-        $ls = 10 * log10((1 / $totalHours) * $sum);
+        // Calculate: 10 × log10(1/720 × sum)
+        $ls = 10 * log10((1 / $totalDataPoints) * $sum);
         
         return round($ls, 2);
     }

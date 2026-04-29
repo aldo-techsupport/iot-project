@@ -65,11 +65,11 @@ class NoiseCalculation extends Model
     }
 
     /**
-     * Check if calculation is complete (has 120 data points)
+     * Check if calculation is complete (has 720 data points)
      */
     public function isComplete(): bool
     {
-        return $this->data_count === 120;
+        return $this->data_count === 720;
     }
 
     /**

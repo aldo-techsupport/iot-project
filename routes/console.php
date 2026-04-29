@@ -16,33 +16,57 @@ Schedule::command('iot:check-timeouts')->everyMinute();
 Schedule::command('noise:calculate-periods')->everyFifteenMinutes();
 
 // Recalculate all devices for each period, 1 minute after period ends
-// L1 ends at 09:10, trigger at 09:11
+// L1: 08:00-09:00, trigger at 09:01
 Schedule::command('iot:getall --period=L1 --force')
-    ->dailyAt('09:11')
+    ->dailyAt('09:01')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-L1.log'));
 
-// L2 ends at 11:10, trigger at 11:11
+// L2: 09:00-10:00, trigger at 10:01
 Schedule::command('iot:getall --period=L2 --force')
-    ->dailyAt('11:11')
+    ->dailyAt('10:01')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-L2.log'));
 
-// L3 ends at 14:10, trigger at 14:11
+// L3: 10:00-11:00, trigger at 11:01
 Schedule::command('iot:getall --period=L3 --force')
-    ->dailyAt('14:11')
+    ->dailyAt('11:01')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-L3.log'));
 
-// L4 ends at 16:10, trigger at 16:11
+// L4 ends at 12:00, trigger at 12:01
 Schedule::command('iot:getall --period=L4 --force')
-    ->dailyAt('16:11')
+    ->dailyAt('12:01')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-L4.log'));
 
-// Calculate Daily Summary (Ls, TWA, DND) after L4 is done
+// L5 ends at 14:00, trigger at 14:01
+Schedule::command('iot:getall --period=L5 --force')
+    ->dailyAt('14:01')
+    ->timezone('Asia/Jakarta')
+    ->appendOutputTo(storage_path('logs/cronjob-L5.log'));
+
+// L6 ends at 15:00, trigger at 15:01
+Schedule::command('iot:getall --period=L6 --force')
+    ->dailyAt('15:01')
+    ->timezone('Asia/Jakarta')
+    ->appendOutputTo(storage_path('logs/cronjob-L6.log'));
+
+// L7 ends at 16:00, trigger at 16:01
+Schedule::command('iot:getall --period=L7 --force')
+    ->dailyAt('16:01')
+    ->timezone('Asia/Jakarta')
+    ->appendOutputTo(storage_path('logs/cronjob-L7.log'));
+
+// L8 ends at 17:00, trigger at 17:01
+Schedule::command('iot:getall --period=L8 --force')
+    ->dailyAt('17:01')
+    ->timezone('Asia/Jakarta')
+    ->appendOutputTo(storage_path('logs/cronjob-L8.log'));
+
+// Calculate Daily Summary (Ls, TWA, DND) after L8 is done
 Schedule::command('iot:calculate-daily')
-    ->dailyAt('16:15')
+    ->dailyAt('17:05')
     ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/cronjob-daily-summary.log'));
 

@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { format, parseISO } from 'date-fns';
 import { Loader2, AlertCircle, RefreshCw, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Period } from '@/types/period';
 
 interface NoiseDataPoint {
     noise_level: number;
@@ -15,7 +16,7 @@ interface NoiseDataPoint {
 
 interface RealTimeNoiseChartProps {
     deviceId: number;
-    period: 'L1' | 'L2' | 'L3' | 'L4';
+    period: Period;
     date?: string;
     autoRefresh?: boolean;
     onStatusChange?: (isOffline: boolean) => void;
@@ -93,7 +94,7 @@ export default function RealTimeNoiseChart({
 
         return {
             time: format(dateObj, 'HH:mm:ss'),
-            dB: point.noise_level,
+            'dB(A)': point.noise_level,
             temp: point.temperature,
             humidity: point.humidity,
             isFilled: point.is_filled,
@@ -172,7 +173,7 @@ export default function RealTimeNoiseChart({
                                 ? "border-transparent bg-green-500 text-white shadow hover:bg-green-600"
                                 : "border-transparent bg-yellow-500 text-white shadow hover:bg-yellow-600"
                         )}>
-                            {data.length} / 120 data points
+                            {data.length} / 720 data points
                         </span>
                         {autoRefresh && (
                             <span className="flex items-center text-xs text-muted-foreground animate-pulse">
@@ -222,7 +223,7 @@ export default function RealTimeNoiseChart({
                             />
                             <YAxis
                                 yAxisId="left"
-                                label={{ value: 'Noise (dB)', angle: -90, position: 'insideLeft', fill: "hsl(var(--muted-foreground))" }}
+                                label={{ value: 'Noise (dB(A))', angle: -90, position: 'insideLeft', fill: "hsl(var(--muted-foreground))" }}
                                 tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                                 tickLine={false}
                                 axisLine={false}
@@ -240,12 +241,12 @@ export default function RealTimeNoiseChart({
                             <Line
                                 yAxisId="left"
                                 type="monotone"
-                                dataKey="dB"
+                                dataKey="dB(A)"
                                 stroke="#8b5cf6" // Purple
                                 strokeWidth={2}
                                 dot={<CustomDot />}
                                 activeDot={{ r: 6, strokeWidth: 0 }}
-                                name="Noise Level (dB)"
+                                name="Noise Level (dB(A))"
                                 animationDuration={1000}
                             />
                             <Line

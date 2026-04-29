@@ -33,10 +33,14 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
     {
         // Use the same smart selection logic as in DashboardController
         $periodTimes = [
-            'L1' => ['start' => '09:00:00', 'end' => '09:10:00'],
-            'L2' => ['start' => '11:00:00', 'end' => '11:10:00'],
-            'L3' => ['start' => '14:00:00', 'end' => '14:10:00'],
-            'L4' => ['start' => '16:00:00', 'end' => '16:10:00'],
+            'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
+            'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
+            'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
+            'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
+            'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
+            'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
+            'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
+            'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
         ];
 
         $officialStart = Carbon::parse("{$this->date} {$periodTimes[$this->period]['start']}");

@@ -97,8 +97,9 @@ class TimeoutHandlerService
             'device_id' => $device->id,
             'period' => $period,
             'expected_at' => $timestamp,
-            'detected_at' => now(),
-            'status' => 'filled',
+            'consecutive_count' => ($lastData->consecutive_timeouts ?? 0) + 1,
+            'action_taken' => 'copied_previous',
+            'details' => 'Data filled by copying last available data',
         ]);
 
         // If we have previous data, clone it with new timestamp
@@ -147,12 +148,16 @@ class TimeoutHandlerService
     {
         $date = now()->toDateString();
         
-        // Official period times - exact timing at 00 seconds
+        // Official period times - exact timing at 00 seconds (8 periods, skip 12-13 lunch)
         $officialTimes = [
-            'L1' => ['start' => '09:00:00', 'end' => '09:10:00'],
-            'L2' => ['start' => '11:00:00', 'end' => '11:10:00'],
-            'L3' => ['start' => '14:00:00', 'end' => '14:10:00'],
-            'L4' => ['start' => '16:00:00', 'end' => '16:10:00'],
+            'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
+            'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
+            'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
+            'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
+            'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
+            'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
+            'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
+            'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
         ];
 
         if (!isset($officialTimes[$period])) return null;

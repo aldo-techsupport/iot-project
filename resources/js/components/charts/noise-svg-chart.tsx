@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Period } from '@/types/period';
 
 interface NoiseDataPoint {
     noise_level: number;
@@ -13,7 +14,7 @@ interface NoiseDataPoint {
 
 interface NoiseSvgChartProps {
     deviceId: number;
-    period: 'L1' | 'L2' | 'L3' | 'L4';
+    period: Period;
     date?: string;
     autoRefresh?: boolean;
 }
@@ -225,7 +226,7 @@ export default function NoiseSvgChart({ deviceId, period, date, autoRefresh = fa
                             transform={`rotate(90, ${padding.left + plotWidth + 60}, ${padding.top + plotHeight / 2})`}
                             fontWeight="bold"
                         >
-                            Noise (dB)
+                            Noise (dB(A))
                         </text>
 
                         {/* X-axis */}

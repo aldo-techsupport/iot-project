@@ -103,7 +103,7 @@ function DeviceCard({ device, onEdit, onDelete }: { device: DeviceSummary; onEdi
                             <Volume2 className="h-4 w-4 text-purple-500" />
                             <div>
                                 <p className="text-muted-foreground text-xs">Noise</p>
-                                <p className="font-semibold">{telemetry.noise_db} dB</p>
+                                <p className="font-semibold">{telemetry.noise_db} dB(A)</p>
                             </div>
                         </div>
                     </div>

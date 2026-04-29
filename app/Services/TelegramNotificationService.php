@@ -201,17 +201,17 @@ class TelegramNotificationService
                     break;
 
                 case 2:
-                    $message = "2️⃣ <b>dB &gt; 85</b>\n\n";
+                    $message = "2️⃣ <b>dB(A) &gt; 85</b>\n\n";
                     $message .= "⚠️ <b>PERINGATAN KEBISINGAN!</b>\n\n";
-                    $message .= "Tingkat kebisingan melebihi 85 dB.\n";
+                    $message .= "Tingkat kebisingan melebihi 85 dB(A).\n";
                     $message .= "Suara sudah berada di ambang batas yang dapat mengganggu kenyamanan dan kesehatan.\n\n";
                     $message .= "Segera evaluasi sumber kebisingan.\n\n";
                     break;
 
                 case 3:
-                    $message = "3️⃣ <b>dB &gt; 85 &amp; THI &gt; 29</b>\n\n";
+                    $message = "3️⃣ <b>dB(A) &gt; 85 &amp; THI &gt; 29</b>\n\n";
                     $message .= "🚨 <b>PERINGATAN KRITIS!</b>\n\n";
-                    $message .= "Kebisingan &gt; 85 dB\n";
+                    $message .= "Kebisingan &gt; 85 dB(A)\n";
                     $message .= "<b>dan</b>\n";
                     $message .= "THI &gt; 29 (Kondisi Panas)\n\n";
                     $message .= "Lingkungan dalam kondisi tidak nyaman dan berisiko.\n\n";
@@ -219,17 +219,17 @@ class TelegramNotificationService
                     break;
 
                 case 4:
-                    $message = "4️⃣ <b>dB &gt; 100</b>\n\n";
+                    $message = "4️⃣ <b>dB(A) &gt; 100</b>\n\n";
                     $message .= "🚨 <b>BAHAYA KEBISINGAN TINGGI!</b>\n\n";
-                    $message .= "Tingkat kebisingan melebihi 100 dB.\n";
+                    $message .= "Tingkat kebisingan melebihi 100 dB(A).\n";
                     $message .= "Berpotensi merusak pendengaran jika terpapar dalam waktu lama.\n\n";
                     $message .= "Gunakan pelindung telinga dan periksa sumber suara segera!\n\n";
                     break;
 
                 case 5:
-                    $message = "5️⃣ <b>dB &gt; 100 &amp; THI &gt; 29</b>\n\n";
+                    $message = "5️⃣ <b>dB(A) &gt; 100 &amp; THI &gt; 29</b>\n\n";
                     $message .= "🚨🚨 <b>KONDISI DARURAT!</b>\n\n";
-                    $message .= "Kebisingan &gt; 100 dB\n";
+                    $message .= "Kebisingan &gt; 100 dB(A)\n";
                     $message .= "<b>dan</b>\n";
                     $message .= "THI &gt; 29 (Suhu Ekstrem)\n\n";
                     $message .= "Lingkungan sangat berbahaya dan tidak aman.\n\n";
@@ -241,7 +241,7 @@ class TelegramNotificationService
         $message .= "📍 Device: <b>{$deviceName}</b>\n";
         $message .= "⏰ {$timestamp} WIB\n\n";
         $message .= "📊 <b>Data Saat Ini:</b>\n";
-        $message .= "   🔊 Noise: " . number_format($noiseDb, 2) . " dB\n";
+        $message .= "   🔊 Noise: " . number_format($noiseDb, 2) . " dB(A)\n";
         $message .= "   🌡️ THI: " . number_format($thi, 2) . "\n";
 
         return $message;
