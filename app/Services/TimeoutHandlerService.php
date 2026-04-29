@@ -12,6 +12,7 @@ class TimeoutHandlerService
 {
     /**
      * Check for missing data points and fill them if necessary
+     * OPTIMIZED: Uses batch queries instead of checking each second individually
      */
     public function checkAndFillGaps(Device $device, string $period)
     {
@@ -38,59 +39,141 @@ class TimeoutHandlerService
             $bufferSeconds = 0; // No buffer for past periods
         }
 
-        // Get the latest data point for this period
+        // OPTIMIZATION: Get ALL existing data timestamps at once
+        $existingTimestamps = NoiseRawData::where('device_id', $device->id)
+            ->where('period', $period)
+            ->whereDate('measured_at', $startTime->toDateString())
+            ->whereBetween('measured_at', [$startTime, $checkUntil->copy()->subSeconds($bufferSeconds)])
+            ->pluck('measured_at')
+            ->map(fn($t) => $t->timestamp)
+            ->toArray();
+
+        // Convert to set for O(1) lookup
+        $existingSet = array_flip($existingTimestamps);
+
+        // Get the latest data point for this period (for cloning)
         $lastData = NoiseRawData::where('device_id', $device->id)
             ->where('period', $period)
             ->whereDate('measured_at', $startTime->toDateString())
             ->orderBy('measured_at', 'desc')
             ->first();
 
-        // If no data at all, assume start time
-        $lastTime = $lastData ? $lastData->measured_at : $startTime;
+        // If no data at all, skip filling (nothing to clone)
+        if (!$lastData) {
+            return;
+        }
 
-        // Calculate expected next time (1 second after last data - ESP32 sends every 1s)
-        $expectedTime = $lastTime->copy()->addSeconds(1);
+        // Track filled data for summary logging
+        $filledCount = 0;
+        $firstGapTime = null;
+        $lastGapTime = null;
+        $batchInserts = [];
+        $batchTelemetry = [];
 
-        // While expected time is strictly before current time check line
-        // Use buffer for active periods, no buffer for past periods
-        while ($expectedTime->lte($checkUntil->copy()->subSeconds($bufferSeconds))) {
-            
-            // Avoid infinite loops - logic check
-            if ($expectedTime->lt($startTime)) {
-                $expectedTime = $startTime;
-                continue;
+        // Check each second in the period
+        $expectedTime = $startTime->copy();
+        $endCheck = $checkUntil->copy()->subSeconds($bufferSeconds);
+
+        while ($expectedTime->lte($endCheck)) {
+            // Safety check: prevent infinite loops
+            if ($filledCount > 3600) {
+                Log::error("Gap filling stopped for device {$device->id}, period {$period} - exceeded 3600 fills (1 hour of data)");
+                break;
             }
-            
-            // Check if data already exists at this exact second (or close to it)
-            // We give +/- 1 second tolerance
-            $exists = NoiseRawData::where('device_id', $device->id)
-                ->where('period', $period)
-                ->whereBetween('measured_at', [
-                    $expectedTime->copy()->subSeconds(1), 
-                    $expectedTime->copy()->addSeconds(1)
-                ])
-                ->exists();
+
+            // Check if data exists at this timestamp (with 1 second tolerance)
+            $timestamp = $expectedTime->timestamp;
+            $exists = isset($existingSet[$timestamp]) || 
+                     isset($existingSet[$timestamp - 1]) || 
+                     isset($existingSet[$timestamp + 1]);
 
             if (!$exists) {
-                // Fill missing data by cloning the last available data
-                $filledData = $this->fillMissingPoint($device, $period, $expectedTime, $lastData);
-                
-                // Update lastData reference to the filled data for next iteration
-                if ($filledData) {
-                    $lastData = $filledData;
+                // Track gap range
+                if ($filledCount === 0) {
+                    $firstGapTime = $expectedTime->copy();
+                }
+                $lastGapTime = $expectedTime->copy();
+
+                // Prepare batch insert data
+                $batchInserts[] = [
+                    'device_id' => $device->id,
+                    'period' => $period,
+                    'noise_level' => $lastData->noise_level,
+                    'temperature' => $lastData->temperature,
+                    'humidity' => $lastData->humidity,
+                    'measured_at' => $expectedTime->copy(),
+                    'is_filled' => true,
+                    'fill_method' => 'copied',
+                    'consecutive_timeouts' => ($lastData->consecutive_timeouts ?? 0) + 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $batchTelemetry[] = [
+                    'device_id' => $device->id,
+                    'temperature' => $lastData->temperature,
+                    'humidity' => $lastData->humidity,
+                    'noise_db' => $lastData->noise_level,
+                    'measured_at' => $expectedTime->copy(),
+                    'is_filled' => true,
+                    'fill_method' => 'copied',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $filledCount++;
+
+                // Batch insert every 100 records to avoid memory issues
+                if (count($batchInserts) >= 100) {
+                    NoiseRawData::insert($batchInserts);
+                    \App\Models\Telemetry::insert($batchTelemetry);
+                    $batchInserts = [];
+                    $batchTelemetry = [];
                 }
             }
 
             // Move to next expected point (every 1 second)
             $expectedTime->addSeconds(1);
         }
+
+        // Insert remaining batch
+        if (count($batchInserts) > 0) {
+            NoiseRawData::insert($batchInserts);
+            \App\Models\Telemetry::insert($batchTelemetry);
+        }
+
+        // Log timeout entries if gaps were filled
+        // OPTIMIZATION: Only log if this gap hasn't been logged in the last 5 minutes
+        if ($filledCount > 0) {
+            $recentLog = NoiseTimeoutLog::where('device_id', $device->id)
+                ->where('period', $period)
+                ->where('expected_at', '>=', $firstGapTime->copy()->subMinutes(5))
+                ->where('expected_at', '<=', $firstGapTime->copy()->addMinutes(5))
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->exists();
+            
+            if (!$recentLog) {
+                NoiseTimeoutLog::create([
+                    'device_id' => $device->id,
+                    'period' => $period,
+                    'expected_at' => $firstGapTime,
+                    'consecutive_count' => $filledCount,
+                    'action_taken' => 'copied_previous',
+                    'details' => "Filled {$filledCount} missing data points (from {$firstGapTime->toDateTimeString()} to {$lastGapTime->toDateTimeString()})",
+                ]);
+
+                Log::info("Filled {$filledCount} missing data points for device {$device->id}, period {$period} (from {$firstGapTime->toDateTimeString()} to {$lastGapTime->toDateTimeString()})");
+            }
+        }
     }
 
     /**
      * Fill a missing data point by cloning the last available data
      * Returns the filled data for chaining
+     * 
+     * @param bool $logIndividual Whether to log each individual fill (default: false to prevent spam)
      */
-    private function fillMissingPoint(Device $device, string $period, Carbon $timestamp, $lastData)
+    private function fillMissingPoint(Device $device, string $period, Carbon $timestamp, $lastData, bool $logIndividual = false)
     {
         // Log the timeout
         NoiseTimeoutLog::create([
@@ -128,12 +211,17 @@ class TimeoutHandlerService
                 'fill_method' => 'copied', // Use valid enum value
             ]);
 
-            Log::info("Filled missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} by cloning previous data");
+            // Only log individual fills if explicitly requested (to prevent log spam)
+            if ($logIndividual) {
+                Log::debug("Filled missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()}");
+            }
             
             return $filledData;
         } else {
-            // No previous data to clone, just log
-            Log::warning("Cannot fill missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} - no previous data available");
+            // No previous data to clone, only log warning if individual logging is enabled
+            if ($logIndividual) {
+                Log::warning("Cannot fill missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} - no previous data available");
+            }
             
             return null;
         }

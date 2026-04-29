@@ -65,9 +65,11 @@ class DashboardController extends Controller
                             ->get()
                             ->keyBy('period');
                         
-                        // Get timeout logs for today
+                        // Get timeout logs for today - OPTIMIZED with date range instead of whereDate
+                        $startOfDay = \Carbon\Carbon::parse($date)->startOfDay();
+                        $endOfDay = \Carbon\Carbon::parse($date)->endOfDay();
                         $timeoutLogs = \App\Models\NoiseTimeoutLog::where('device_id', $device->id)
-                            ->whereDate('expected_at', $date)
+                            ->whereBetween('expected_at', [$startOfDay, $endOfDay])
                             ->orderBy('expected_at', 'desc')
                             ->limit(10)
                             ->get();
@@ -764,10 +766,15 @@ class DashboardController extends Controller
         ]);
 
         $date = $validated['date'] ?? now()->toDateString();
+        
+        // OPTIMIZED: Use date range instead of whereDate for better index usage
+        $startOfDay = \Carbon\Carbon::parse($date)->startOfDay();
+        $endOfDay = \Carbon\Carbon::parse($date)->endOfDay();
 
         $logs = \App\Models\NoiseTimeoutLog::where('device_id', $validated['device_id'])
-            ->whereDate('expected_at', $date)
+            ->whereBetween('expected_at', [$startOfDay, $endOfDay])
             ->orderBy('expected_at', 'desc')
+            ->limit(100) // Add limit to prevent loading too many logs
             ->get();
 
         return response()->json([

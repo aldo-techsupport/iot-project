@@ -79,3 +79,13 @@ Schedule::command('telegram:send-alert')
 Schedule::command('whatsapp:send-alert')
     ->hourly()
     ->appendOutputTo(storage_path('logs/whatsapp-alert.log'));
+
+// Clean up old log files daily at 2 AM
+Schedule::command('logs:cleanup --days=7 --size=100')
+    ->dailyAt('02:00')
+    ->name('cleanup-file-logs');
+
+// Clean up old timeout logs from database daily at 2:30 AM
+Schedule::command('iot:cleanup-timeout-logs --days=7 --batch=1000')
+    ->dailyAt('02:30')
+    ->name('cleanup-timeout-logs');

@@ -28,6 +28,7 @@ class CheckDataTimeouts extends Command
 
     /**
      * Execute the console command.
+     * OPTIMIZED: Only process active periods and recently ended periods
      */
     public function handle(TimeoutHandlerService $timeoutHandler, DashboardController $dashboardController)
     {
@@ -49,6 +50,13 @@ class CheckDataTimeouts extends Command
         ];
 
         $devices = Device::where('is_active', true)->get();
+        
+        // OPTIMIZATION: Batch check which calculations already exist
+        $existingCalculations = NoiseCalculation::whereIn('device_id', $devices->pluck('id'))
+            ->whereDate('calculation_date', $now->toDateString())
+            ->get()
+            ->groupBy('device_id')
+            ->map(fn($calcs) => $calcs->pluck('period')->toArray());
 
         foreach ($periods as $periodName => $times) {
             $periodEnd = Carbon::parse($times['end']);
@@ -58,32 +66,45 @@ class CheckDataTimeouts extends Command
             if ($now->lt($periodStart)) continue;
 
             $isPeriodActive = $now->between($periodStart, $periodEnd->copy()->addMinutes(2)); // Buffer 2 mins
-            $isPastPeriod = $now->gt($periodEnd->copy()->addMinutes(2));
+            // OPTIMIZATION: Only process past periods within 10 minutes after end
+            // After that, they should be handled by scheduled cronjobs
+            $isPastPeriod = $now->between($periodEnd->copy()->addMinutes(2), $periodEnd->copy()->addMinutes(10));
 
             if (!$isPeriodActive && !$isPastPeriod) continue;
 
             $this->info("Checking period {$periodName}...");
 
             foreach ($devices as $device) {
-                // Check if calculation already exists
-                $exists = NoiseCalculation::where('device_id', $device->id)
-                    ->where('period', $periodName)
-                    ->whereDate('calculation_date', $now->toDateString())
-                    ->exists();
+                // OPTIMIZATION: Use cached calculation check
+                $exists = isset($existingCalculations[$device->id]) && 
+                         in_array($periodName, $existingCalculations[$device->id]);
 
                 if ($exists) {
-                    $this->info("  - Device {$device->name}: Calculation already exists. Skipping.");
-                    continue;
+                    continue; // Skip silently if calculation exists
                 }
 
-                $this->info("  - Processing device: {$device->name} ({$device->id})");
-
                 if ($isPeriodActive) {
-                    // Normal processing for active period
+                    // OPTIMIZATION: Only fill gaps for active periods
+                    // Don't log individual device processing to reduce noise
                     $timeoutHandler->checkAndFillGaps($device, $periodName);
+                    
+                    // Check count for active period
+                    $count = NoiseRawData::where('device_id', $device->id)
+                        ->where('period', $periodName)
+                        ->whereDate('measured_at', $now->toDateString())
+                        ->count();
+
+                    if ($count >= 720) {
+                        $dashboardController->triggerCalculation(
+                            $device->id,
+                            $periodName,
+                            $now->toDateString()
+                        );
+                        $this->info("  ✓ {$device->name} - {$periodName}: Calculation triggered ({$count} points)");
+                    }
                 } elseif ($isPastPeriod) {
                     // Past period cleanup: Fill gaps first, then force calculation
-                    $this->info("    - Past period detected. Filling gaps and forcing calculation.");
+                    $this->info("  → {$device->name} - {$periodName}: Processing past period");
                     
                     // Fill gaps for past period
                     $timeoutHandler->checkAndFillGaps($device, $periodName);
@@ -102,60 +123,24 @@ class CheckDataTimeouts extends Command
                             $now->toDateString(),
                             true // Force calculation
                         );
-                        $this->info("    - Forced calculation triggered with {$count} points.");
+                        $this->info("    ✓ Forced calculation triggered with {$count} points");
 
                         // Check if all periods complete, trigger daily summary
                         $periodsComplete = NoiseCalculation::where('device_id', $device->id)
                             ->whereDate('calculation_date', $now->toDateString())
                             ->count();
                         
-                        if ($periodsComplete >= 4) {
+                        if ($periodsComplete >= 8) {
                             try {
                                 $dashboardController->calculateDailySummary(
                                     new \Illuminate\Http\Request(['device_id' => $device->id])
                                 );
-                                $this->info("    - Daily Summary Calculation triggered.");
+                                $this->info("    ✓ Daily Summary calculated");
                             } catch (\Exception $e) {
                                 $this->error('Daily summary calculation failed: ' . $e->getMessage());
                             }
                         }
-                    } else {
-                        $this->info("    - No data found for this period. Skipping.");
                     }
-                    continue; 
-                }
-
-                // Check count again for active period
-                $count = NoiseRawData::where('device_id', $device->id)
-                    ->where('period', $periodName)
-                    ->whereDate('measured_at', $now->toDateString())
-                    ->count();
-
-                if ($count >= 720) {
-                    $dashboardController->triggerCalculation(
-                        $device->id,
-                        $periodName,
-                        $now->toDateString()
-                    );
-                    $this->info("  - 720 points reached. Calculation triggered.");
-                    
-                    // Check if all periods complete, trigger daily summary
-                    $periodsComplete = NoiseCalculation::where('device_id', $device->id)
-                        ->whereDate('calculation_date', $now->toDateString())
-                        ->count();
-                    
-                    if ($periodsComplete >= 8) {
-                        try {
-                            $dashboardController->calculateDailySummary(
-                                new \Illuminate\Http\Request(['device_id' => $device->id])
-                            );
-                            $this->info("  - Daily Summary Calculation triggered.");
-                        } catch (\Exception $e) {
-                            $this->error('Daily summary calculation failed: ' . $e->getMessage());
-                        }
-                    }
-                } else {
-                    $this->info("  - Current count: {$count}/120");
                 }
             }
         }
