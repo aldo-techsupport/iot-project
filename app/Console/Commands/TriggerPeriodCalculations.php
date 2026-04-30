@@ -60,15 +60,16 @@ class TriggerPeriodCalculations extends Command
                     continue;
                 }
                 
-                // Count available real data
+                // Count available real data (only non-filled data)
                 $dataCount = \App\Models\NoiseRawData::where('device_id', $device->id)
                     ->where('period', $period)
                     ->whereDate('measured_at', $today)
                     ->where('is_filled', false)
                     ->count();
                 
-                if ($dataCount < 10) {
-                    $this->warn("  ⚠️  {$device->name} - {$period}: Insufficient data ({$dataCount} points)");
+                // Skip if no real data at all
+                if ($dataCount === 0) {
+                    $this->warn("  ⚠️  {$device->name} - {$period}: No real data available");
                     continue;
                 }
                 

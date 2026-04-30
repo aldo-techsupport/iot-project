@@ -52,13 +52,8 @@ export default function RealTimeNoiseChart({
                 const newData = result.data;
                 setData(newData);
 
-                // Detection logic for offline status
-                // If last 12 points (1 minute) are all zero-filled, consider offline
-                if (newData.length > 0 && onStatusChange) {
-                    const recentPoints = newData.slice(-12); // Last 12 points
-                    const isOffline = recentPoints.length >= 12 && recentPoints.every((p: any) => p.fill_method === 'zero');
-                    onStatusChange(isOffline);
-                }
+                // No offline detection - if no data, device is simply not sending
+                // Let the backend handle data availability
             } else {
                 setError('Failed to load data');
             }
@@ -136,9 +131,9 @@ export default function RealTimeNoiseChart({
                             </span>
                             <span className={cn(
                                 "font-bold",
-                                data.fillMethod === 'zero' ? "text-red-500" : "text-yellow-500"
+                                data.isFilled ? "text-blue-500" : "text-green-500"
                             )}>
-                                {data.fillMethod === 'zero' ? 'Filled (Zero)' : 'Failed To Fetch Data'}
+                                {data.isFilled ? 'Filled Data' : 'Real Data'}
                             </span>
                         </div>
                     )}
@@ -173,7 +168,7 @@ export default function RealTimeNoiseChart({
                                 ? "border-transparent bg-green-500 text-white shadow hover:bg-green-600"
                                 : "border-transparent bg-yellow-500 text-white shadow hover:bg-yellow-600"
                         )}>
-                            {data.length} / 720 data points
+                            {data.length} / 60 data points
                         </span>
                         {autoRefresh && (
                             <span className="flex items-center text-xs text-muted-foreground animate-pulse">

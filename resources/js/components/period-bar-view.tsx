@@ -130,7 +130,7 @@ export default function PeriodBarView({
                                                 Avg: {avgValue.toFixed(1)} dB
                                             </span>
                                             <span className="text-xs opacity-60">
-                                                {calc.data_count}/720 points
+                                                {calc.data_count}/60 points
                                             </span>
                                         </div>
                                     </div>
@@ -155,7 +155,7 @@ export default function PeriodBarView({
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
                                             <span className="text-xs sm:text-sm font-medium whitespace-nowrap">Collecting data...</span>
                                             <span className="text-xs opacity-80 whitespace-nowrap">
-                                                {calc.data_count}/720 points
+                                                {calc.data_count}/60 points
                                             </span>
                                         </div>
                                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/20 backdrop-blur-sm whitespace-nowrap self-start sm:self-auto">

@@ -94,7 +94,7 @@ class CheckDataTimeouts extends Command
                         ->whereDate('measured_at', $now->toDateString())
                         ->count();
 
-                    if ($count >= 720) {
+                    if ($count >= 60) {
                         $dashboardController->triggerCalculation(
                             $device->id,
                             $periodName,

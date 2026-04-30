@@ -273,7 +273,7 @@ export default function NoiseSvgChart({ deviceId, period, date, autoRefresh = fa
                         {/* Data points with hover and filled indicators */}
                         {data.map((d, i) => {
                             const showFilledIndicator = d.is_filled;
-                            const color = d.fill_method === 'zero' ? '#ef4444' : '#eab308';
+                            const color = d.is_filled ? '#3b82f6' : '#10b981'; // Blue for filled, Green for real
                             
                             return (
                                 <g key={`points-${i}`}>
@@ -340,7 +340,7 @@ export default function NoiseSvgChart({ deviceId, period, date, autoRefresh = fa
                                             {/* Filled status */}
                                             {d.is_filled && (
                                                 <text x={getX(i) + 15} y={padding.top + 90} fontSize="9" fill={color} fontWeight="bold">
-                                                    {d.fill_method === 'zero' ? 'Filled (Zero)' : 'Filled (Copy)'}
+                                                    Filled
                                                 </text>
                                             )}
                                         </g>

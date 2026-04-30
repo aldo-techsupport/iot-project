@@ -46,8 +46,8 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
         $officialStart = Carbon::parse("{$this->date} {$periodTimes[$this->period]['start']}");
         $officialEnd = Carbon::parse("{$this->date} {$periodTimes[$this->period]['end']}");
 
-        // Select real data at 5-second intervals from official period only
-        $selectedData = \App\Services\NoiseDataSelectionService::selectFiveSecondIntervalData(
+        // Select real data at 1-minute intervals from official period only
+        $selectedData = \App\Services\NoiseDataSelectionService::selectOneMinuteIntervalData(
             $this->deviceId,
             $this->period,
             $officialStart,
@@ -68,10 +68,10 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
         return [
             $counter,
             $data->measured_at->format('Y-m-d H:i:s'),
-            number_format($data->noise_db, 2),
-            number_format($data->temperature, 2),
-            number_format($data->humidity, 2),
-            'OK', // All data is real now
+            number_format($data->noise_db ?? 0, 2),
+            number_format($data->temperature ?? 0, 2),
+            number_format($data->humidity ?? 0, 2),
+            ($data->is_filled ?? false) ? 'Filled' : 'OK',
         ];
     }
 

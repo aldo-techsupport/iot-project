@@ -8,27 +8,25 @@ use Carbon\Carbon;
 class NoiseDataSelectionService
 {
     /**
-     * Select exactly 720 data points at 5-second intervals from 24-hour telemetry data
+     * Select up to 60 data points at 1-minute intervals from 1-hour telemetry data
      * 
-     * STRATEGY: Static timing with silent backup fallback
+     * STRATEGY: Flexible data selection - prioritize real data, accept filled if needed
      * 
-     * 1. Static period: Always 1 hour (720 points @ 5s interval)
-     * 2. Priority: Use real data from official period first
-     * 3. Backup: If slots empty, fill with data from 5 minutes before period start
-     * 4. Timestamp: Uses ORIGINAL timestamp from sensor (no manipulation)
+     * 1. Static period: Always 1 hour (target 60 points @ 1 minute interval)
+     * 2. Priority: Real data first (is_filled = false)
+     * 3. Fallback: Accept filled data if no real data available
+     * 4. Tolerance: ±30 seconds window for matching
      * 
      * Example for L1:
      * - Official: 08:00:00 - 09:00:00 (1 hour)
-     * - Backup: 07:55:00 - 08:00:00 (5 minutes before, used only if needed)
-     * - Result: Up to 720 data points with their ORIGINAL timestamps from sensor
+     * - Result: Up to 60 data points (mix of real and filled if needed)
      * 
      * Benefits:
-     * - Shows actual sensor timestamp (transparent to user)
-     * - Transparent to user (no indication of backup usage)
-     * - Static timing (no dynamic adjustment)
-     * - Backup data seamlessly integrated
+     * - Flexible: Works even with partial data
+     * - Prioritizes real data but doesn't reject filled data
+     * - Better data availability
      */
-    public static function selectFiveSecondIntervalData($deviceId, $period, $startTime, $endTime)
+    public static function selectOneMinuteIntervalData($deviceId, $period, $startTime, $endTime)
     {
         // Parse official start and end times
         $officialStart = Carbon::parse($startTime);
@@ -37,24 +35,19 @@ class NoiseDataSelectionService
         // Ensure start time is at 00 seconds
         $officialStart->second(0);
         
-        // Get backup data from 5 minutes before official start
-        $backupStart = $officialStart->copy()->subMinutes(5);
-        
-        // Get all telemetry data from backup period + official period
-        // Include both real data and filled data (is_filled can be true or false)
+        // Get ALL telemetry data from official period (both real and filled)
         $allData = Telemetry::where('device_id', $deviceId)
-            ->whereBetween('measured_at', [$backupStart, $officialEnd->copy()->addSeconds(10)])
+            ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
             ->orderBy('measured_at')
             ->get();
         
-        // Generate 720 expected timestamps at 5-second intervals starting from 00 seconds
-        // Example: 08:00:00, 08:00:05, 08:00:10, ..., 08:59:55
+        // Generate 60 expected timestamps at 1-minute intervals
         $expectedTimestamps = [];
         $current = $officialStart->copy();
         
-        for ($i = 0; $i < 720; $i++) {
+        for ($i = 0; $i < 60; $i++) {
             $expectedTimestamps[] = $current->copy();
-            $current->addSeconds(5);
+            $current->addMinutes(1);
         }
         
         // For each expected timestamp, find closest data point
@@ -62,38 +55,33 @@ class NoiseDataSelectionService
         $usedIds = [];
         
         foreach ($expectedTimestamps as $expectedTime) {
-            // Priority 1: Find data from official period (within ±2.5 seconds)
-            $closest = $allData->filter(function($d) use ($expectedTime, $usedIds, $officialStart) {
+            // Priority 1: Find REAL data within ±30 seconds
+            $closest = $allData->filter(function($d) use ($expectedTime, $usedIds) {
                 return !in_array($d->id, $usedIds) && 
-                       $d->measured_at->gte($officialStart) && // From official period
-                       abs($d->measured_at->timestamp - $expectedTime->timestamp) <= 2.5;
+                       !$d->is_filled && // Real data only
+                       abs($d->measured_at->timestamp - $expectedTime->timestamp) <= 30;
             })->sortBy(function($d) use ($expectedTime) {
                 return abs($d->measured_at->timestamp - $expectedTime->timestamp);
             })->first();
             
-            // Priority 2: If not found, use backup data from 5 minutes before
+            // Priority 2: If no real data, accept filled data
             if (!$closest) {
-                $closest = $allData->filter(function($d) use ($usedIds, $officialStart) {
+                $closest = $allData->filter(function($d) use ($expectedTime, $usedIds) {
                     return !in_array($d->id, $usedIds) && 
-                           $d->measured_at->lt($officialStart); // From backup period
+                           abs($d->measured_at->timestamp - $expectedTime->timestamp) <= 30;
                 })->sortBy(function($d) use ($expectedTime) {
                     return abs($d->measured_at->timestamp - $expectedTime->timestamp);
                 })->first();
             }
             
             if ($closest) {
-                // Clone the data and keep original timestamp (no manipulation)
                 $dataPoint = clone $closest;
-                // Keep original timestamp from sensor
-                // $dataPoint->measured_at remains as original
-                $dataPoint->is_backup = $closest->measured_at->lt($officialStart); // Track if from backup
-                
                 $selectedData->push($dataPoint);
                 $usedIds[] = $closest->id;
             }
         }
         
-        // Return selected data (should always be 720 if backup data available)
+        // Return selected data (may be less than 60 if insufficient data)
         return $selectedData;
     }
 }

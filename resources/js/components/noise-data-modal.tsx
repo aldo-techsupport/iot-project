@@ -75,6 +75,7 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
             device_id: deviceId.toString(),
             period,
             date,
+            _t: Date.now().toString(), // Add timestamp to bypass cache
         });
         window.location.href = `/api/v1/iot/noise-data/export?${params}`;
     };
@@ -160,8 +161,8 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                                             <td className="px-3 py-2 text-right">{row.humidity.toFixed(2)}</td>
                                             <td className="px-3 py-2 text-center">
                                                 {row.is_filled ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                                                        Failed To Fetch Data ({row.fill_method})
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                                        Filled
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">

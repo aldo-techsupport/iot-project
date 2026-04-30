@@ -40,18 +40,32 @@ class DeviceController extends Controller
     public function update(Request $request, Device $device): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['boolean'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $device->update([
-            'name' => $validated['name'],
-            'location' => $validated['location'] ?? null,
-            'description' => $validated['description'] ?? null,
-            'is_active' => $validated['is_active'] ?? $device->is_active,
-        ]);
+        // Only update fields that are present in the request
+        $updateData = [];
+        
+        if (isset($validated['name'])) {
+            $updateData['name'] = $validated['name'];
+        }
+        
+        if (array_key_exists('location', $validated)) {
+            $updateData['location'] = $validated['location'];
+        }
+        
+        if (array_key_exists('description', $validated)) {
+            $updateData['description'] = $validated['description'];
+        }
+        
+        if (isset($validated['is_active'])) {
+            $updateData['is_active'] = $validated['is_active'];
+        }
+
+        $device->update($updateData);
 
         return redirect()->back()
             ->with('success', 'Device updated successfully');

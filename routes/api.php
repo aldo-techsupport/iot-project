@@ -5,23 +5,6 @@ use App\Http\Controllers\Api\V1\ThiController;
 use App\Http\Controllers\IoT\DashboardController;
 use App\Http\Middleware\AuthenticateDevice;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
-
-// Configure rate limiting per device
-RateLimiter::for('device-api', function ($request) {
-    $device = $request->get('authenticated_device');
-    $key = $device ? 'device:' . $device->id : 'ip:' . $request->ip();
-    
-    return Limit::perMinute(60)->by($key)->response(function () {
-        return response()->json([
-            'success' => false,
-            'message' => 'Too many requests',
-            'data' => null,
-            'errors' => ['rate_limit' => 'Rate limit exceeded. Please wait before sending more requests.'],
-        ], 429);
-    });
-});
 
 Route::prefix('v1')->group(function () {
     Route::middleware([AuthenticateDevice::class, 'throttle:device-api'])->group(function () {
@@ -52,6 +35,13 @@ Route::prefix('v1')->group(function () {
 
     // Dashboard endpoints (Public or Web Auth - for simplicity making them accessible, but in prod should be auth:sanctum)
     Route::prefix('iot')->group(function () {
+        // Realtime endpoint with aggressive rate limiting
+        Route::middleware('throttle:realtime-api')->group(function () {
+            // GET real-time noise data
+            Route::get('/noise-data/realtime', [DashboardController::class, 'getRealTimeNoiseData']);
+        });
+
+        // Other dashboard endpoints WITHOUT rate limiting
         // GET noise calculations
         Route::get('/noise-calculations', [DashboardController::class, 'getNoiseCalculations']);
         
@@ -60,14 +50,11 @@ Route::prefix('v1')->group(function () {
         
         // GET export daily summary to Excel
         Route::get('/daily-summary/export', [DashboardController::class, 'exportDailySummary']);
-        
-        // GET real-time noise data
-        Route::get('/noise-data/realtime', [DashboardController::class, 'getRealTimeNoiseData']);
 
         // GET timeout logs
         Route::get('/timeout-logs', [DashboardController::class, 'getTimeoutLogs']);
 
-        // GET export noise data to Excel
+        // GET export noise data to Excel (NO RATE LIMIT)
         Route::get('/noise-data/export', [DashboardController::class, 'exportNoiseData']);
 
         // GET THI data

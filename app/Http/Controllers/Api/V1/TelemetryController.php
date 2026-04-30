@@ -106,7 +106,7 @@ class TelemetryController extends Controller
                 'fill_method' => 'actual',
             ]);
             
-            // Check if we have 720 data points
+            // Check if we have 60 data points (1 per minute for 1 hour)
             $count = NoiseRawData::where('device_id', $device->id)
                 ->where('period', $period)
                 ->whereDate('measured_at', now()->toDateString())
@@ -115,11 +115,11 @@ class TelemetryController extends Controller
             $noiseMonitoring = [
                 'period' => $period,
                 'count' => $count,
-                'target' => 720,
+                'target' => 60,
             ];
             
-            // Auto-trigger calculation if 720 data points reached
-            if ($count >= 720) {
+            // Auto-trigger calculation if 60 data points reached
+            if ($count >= 60) {
                 try {
                     $dashboardController = app(DashboardController::class);
                     $response = $dashboardController->triggerCalculation(

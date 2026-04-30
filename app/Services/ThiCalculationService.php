@@ -23,6 +23,7 @@ class ThiCalculationService
 
     /**
      * Get THI data grouped by 30-minute intervals for a specific date
+     * Uses all available data (5-second intervals)
      */
     public static function getThiDataByDate(int $deviceId, string $date): array
     {
@@ -71,6 +72,51 @@ class ThiCalculationService
         }
 
         return $intervals;
+    }
+
+    /**
+     * Get THI data with 1-minute intervals for a specific date
+     * Selects data closest to each minute mark (00 seconds)
+     */
+    public static function getThiDataByMinute(int $deviceId, string $date): array
+    {
+        $startDate = Carbon::parse($date)->startOfDay();
+        $endDate = Carbon::parse($date)->endOfDay();
+
+        $result = [];
+        
+        // Loop through each minute of the day
+        for ($hour = 0; $hour < 24; $hour++) {
+            for ($minute = 0; $minute < 60; $minute++) {
+                $targetTime = $startDate->copy()->addHours($hour)->addMinutes($minute);
+                
+                // Find data closest to this minute mark (within ±30 seconds)
+                $telemetry = Telemetry::where('device_id', $deviceId)
+                    ->whereBetween('measured_at', [
+                        $targetTime->copy()->subSeconds(30),
+                        $targetTime->copy()->addSeconds(30)
+                    ])
+                    ->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, measured_at, ?))', [$targetTime])
+                    ->first();
+
+                if ($telemetry && $telemetry->temperature && $telemetry->humidity) {
+                    $thi = self::calculateThi($telemetry->temperature, $telemetry->humidity);
+                    
+                    $result[] = [
+                        'time' => $targetTime->format('H:i'),
+                        'hour' => $hour,
+                        'minute' => $minute,
+                        'temperature' => round($telemetry->temperature, 2),
+                        'humidity' => round($telemetry->humidity, 2),
+                        'thi' => round($thi, 2),
+                        'measured_at' => $telemetry->measured_at->toIso8601String(),
+                        'target_time' => $targetTime->toIso8601String(),
+                    ];
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

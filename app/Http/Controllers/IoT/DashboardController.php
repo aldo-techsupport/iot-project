@@ -265,6 +265,7 @@ class DashboardController extends Controller
                 'telegram_enabled' => $device->telegram_enabled,
                 'whatsapp_numbers' => $device->whatsapp_numbers,
                 'whatsapp_enabled' => $device->whatsapp_enabled,
+                'calculation_method' => $device->calculation_method ?? 'copy_timeout',
                 'latest_telemetry' => $device->latestTelemetry ? [
                     'temperature' => $device->latestTelemetry->temperature,
                     'humidity' => $device->latestTelemetry->humidity,
@@ -315,7 +316,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    // Note: selectFiveSecondIntervalData moved to NoiseDataSelectionService
+    // Note: selectOneMinuteIntervalData moved to NoiseDataSelectionService
 
 
     /**
@@ -346,16 +347,16 @@ class DashboardController extends Controller
         ]);
 
         // Check if we have enough data points for this period today
-        // Note: Since we store every 5 seconds, we'll have 720 points per 1-hour period
-        // We select 720 points at 5-second intervals during retrieval
+        // Note: Since we store every 1 minute, we'll have 60 points per 1-hour period
+        // We select 60 points at 1-minute intervals during retrieval
         $count = NoiseRawData::where('device_id', $validated['device_id'])
             ->where('period', $validated['period'])
             ->whereDate('measured_at', $measuredAt->toDateString())
             ->count();
 
-        // Auto-trigger calculation if we have enough data (>= 720)
-        // The calculation will select appropriate 5-second interval data
-        if ($count >= 720) {
+        // Auto-trigger calculation if we have enough data (>= 60)
+        // The calculation will select appropriate 1-minute interval data
+        if ($count >= 60) {
             $this->triggerCalculation(
                 $validated['device_id'],
                 $validated['period'],
@@ -416,57 +417,65 @@ class DashboardController extends Controller
 
         $date = $validated['date'] ?? now()->toDateString();
         $period = $validated['period'];
+        $deviceId = $validated['device_id'];
 
-        // Get official period times (8 periods, skip 12:00-13:00 lunch break)
-        $periodTimes = [
-            'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
-            'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
-            'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
-            'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
-            'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
-            'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
-            'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
-            'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
-        ];
-
-        $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
-        $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
-
-        // Select real data at 5-second intervals from 24-hour telemetry data
-        $selectedData = NoiseDataSelectionService::selectFiveSecondIntervalData(
-            $validated['device_id'],
-            $period,
-            $officialStart,
-            $officialEnd
-        );
-
-        // Get total telemetry data collected from official period only
-        // Include both real and filled data
-        $totalCollected = \App\Models\Telemetry::where('device_id', $validated['device_id'])
-            ->whereDate('measured_at', $date)
-            ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
-            ->count();
+        // Cache key based on device, period, and date
+        $cacheKey = "realtime_noise:{$deviceId}:{$period}:{$date}";
         
-        // All selected data are from official period (with tolerance for closest match)
-        $fromOfficial = $selectedData->count();
+        // Cache for 5 seconds (data updates every 5 seconds anyway)
+        return \Cache::remember($cacheKey, 5, function () use ($deviceId, $period, $date) {
+            // Get official period times (8 periods, skip 12:00-13:00 lunch break)
+            $periodTimes = [
+                'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
+                'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
+                'L3' => ['start' => '10:00:00', 'end' => '11:00:00'],
+                'L4' => ['start' => '11:00:00', 'end' => '12:00:00'],
+                'L5' => ['start' => '13:00:00', 'end' => '14:00:00'],
+                'L6' => ['start' => '14:00:00', 'end' => '15:00:00'],
+                'L7' => ['start' => '15:00:00', 'end' => '16:00:00'],
+                'L8' => ['start' => '16:00:00', 'end' => '17:00:00'],
+            ];
 
-        // Format response - map telemetry fields to noise data format
-        $formattedData = $selectedData->map(fn($d) => [
-            'noise_level' => (float) ($d->noise_db ?? 0), // telemetry uses 'noise_db'
-            'temperature' => (float) $d->temperature,
-            'humidity' => (float) $d->humidity,
-            'measured_at' => $d->measured_at->toIso8601String(),
-            'is_filled' => (bool) $d->is_filled,
-            'fill_method' => $d->fill_method,
-        ])->values();
+            $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
+            $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-        return response()->json([
-            'success' => true,
-            'data' => $formattedData,
-            'count' => $formattedData->count(),
-            'total_collected' => $totalCollected,
-            'from_official_period' => $fromOfficial,
-        ]);
+            // Select real data at 1-minute intervals from 1-hour telemetry data
+            $selectedData = NoiseDataSelectionService::selectOneMinuteIntervalData(
+                $deviceId,
+                $period,
+                $officialStart,
+                $officialEnd
+            );
+
+            // Get total telemetry data collected from official period only
+            // Include both real and filled data
+            $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
+                ->whereDate('measured_at', $date)
+                ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
+                ->count();
+            
+            // All selected data are from official period (with tolerance for closest match)
+            $fromOfficial = $selectedData->count();
+
+            // Format response - map telemetry fields to noise data format
+            $formattedData = $selectedData->map(fn($d) => [
+                'noise_level' => (float) ($d->noise_db ?? 0), // telemetry uses 'noise_db'
+                'temperature' => (float) $d->temperature,
+                'humidity' => (float) $d->humidity,
+                'measured_at' => $d->measured_at->toIso8601String(),
+                'is_filled' => (bool) $d->is_filled,
+                'fill_method' => $d->fill_method,
+            ])->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedData,
+                'count' => $formattedData->count(),
+                'total_collected' => $totalCollected,
+                'from_official_period' => $fromOfficial,
+                'cached_at' => now()->toIso8601String(),
+            ]);
+        });
     }
 
     /**
@@ -508,8 +517,8 @@ class DashboardController extends Controller
         $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
         $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-        // Select real data at 5-second intervals (with 1-minute safety buffer before start)
-        $selectedData = NoiseDataSelectionService::selectFiveSecondIntervalData(
+        // Select real data at 1-minute intervals (with 5-minute safety buffer before start)
+        $selectedData = NoiseDataSelectionService::selectOneMinuteIntervalData(
             $deviceId,
             $period,
             $officialStart,
@@ -534,11 +543,11 @@ class DashboardController extends Controller
 
         $dataCount = count($rawData);
 
-        // If NOT forced, require at least SOME data (lowered from 60 to 10)
-        if (!$force && $dataCount < 10) {
+        // If NOT forced, require at least SOME real data
+        if (!$force && $dataCount === 0) {
             return response()->json([
                 'success' => false,
-                'message' => "Insufficient data. Need at least 10 data points for calculation, got {$dataCount}. Total collected: {$totalCollected}",
+                'message' => "No real data available for calculation. Total collected: {$totalCollected}",
             ], 400);
         }
 
@@ -576,7 +585,7 @@ class DashboardController extends Controller
                 'data_used' => $dataCount,
                 'total_collected' => $totalCollected,
                 'from_official_period' => $dataCount, // All data is from official period
-                'collection_strategy' => $dataCount >= 720 ? 'full_dataset' : 'real_data_only',
+                'collection_strategy' => $dataCount >= 60 ? 'full_dataset' : 'real_data_only',
             ],
         ]);
     }
@@ -612,19 +621,19 @@ class DashboardController extends Controller
         // Prepare data for Ls calculation
         // Based on 8 hours work day: L1-L8 = 1h each (total 8h, skip 12-13 lunch)
         $periodData = [
-            ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L5', 'leq' => $calculations->get('L5')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L6', 'leq' => $calculations->get('L6')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L7', 'leq' => $calculations->get('L7')->leq_value, 'duration_hours' => 1],
-            ['period' => 'L8', 'leq' => $calculations->get('L8')->leq_value, 'duration_hours' => 1],
+            ['period' => 'L1', 'leq' => $calculations->get('L1')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L1')->data_count],
+            ['period' => 'L2', 'leq' => $calculations->get('L2')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L2')->data_count],
+            ['period' => 'L3', 'leq' => $calculations->get('L3')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L3')->data_count],
+            ['period' => 'L4', 'leq' => $calculations->get('L4')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L4')->data_count],
+            ['period' => 'L5', 'leq' => $calculations->get('L5')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L5')->data_count],
+            ['period' => 'L6', 'leq' => $calculations->get('L6')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L6')->data_count],
+            ['period' => 'L7', 'leq' => $calculations->get('L7')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L7')->data_count],
+            ['period' => 'L8', 'leq' => $calculations->get('L8')->leq_value, 'duration_hours' => 1, 'data_count' => $calculations->get('L8')->data_count],
         ];
         
         $statsService = new NoiseStatisticsService();
         
-        // Calculate Ls (Leq Siang)
+        // Calculate Ls (Leq Siang) using actual data count
         $ls = $statsService->calculateLs($periodData);
         
         // Calculate allowable time (T) using NIOSH formula
@@ -789,31 +798,62 @@ class DashboardController extends Controller
      */
     public function exportNoiseData(Request $request)
     {
-        $validated = $request->validate([
-            'device_id' => ['required', 'exists:devices,id'],
-            'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
-            'date' => ['nullable', 'date'],
-        ]);
+        try {
+            \Log::info('Export noise data request received', [
+                'device_id' => $request->device_id,
+                'period' => $request->period,
+                'date' => $request->date,
+                'ip' => $request->ip(),
+            ]);
 
-        $device = \App\Models\Device::find($validated['device_id']);
-        $date = $validated['date'] ?? now()->toDateString();
-        $period = $validated['period'];
+            $validated = $request->validate([
+                'device_id' => ['required', 'exists:devices,id'],
+                'period' => ['required', 'in:L1,L2,L3,L4,L5,L6,L7,L8'],
+                'date' => ['nullable', 'date'],
+            ]);
 
-        $filename = sprintf(
-            '%s_%s_%s_noise_data.xlsx',
-            str_replace(' ', '_', $device->name),
-            $period,
-            $date
-        );
+            $device = \App\Models\Device::find($validated['device_id']);
+            $date = $validated['date'] ?? now()->toDateString();
+            $period = $validated['period'];
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\NoiseDataExport(
-                $validated['device_id'],
+            $filename = sprintf(
+                '%s_%s_%s_noise_data.xlsx',
+                str_replace(' ', '_', $device->name),
                 $period,
-                $date,
-                $device->name
-            ),
-            $filename
-        );
+                $date
+            );
+
+            \Log::info('Starting Excel export', [
+                'filename' => $filename,
+                'device' => $device->name,
+            ]);
+
+            $export = \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\NoiseDataExport(
+                    $validated['device_id'],
+                    $period,
+                    $date,
+                    $device->name
+                ),
+                $filename
+            );
+
+            \Log::info('Export completed successfully');
+
+            return $export;
+        } catch (\Exception $e) {
+            \Log::error('Export noise data failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'device_id' => $request->device_id ?? null,
+                'period' => $request->period ?? null,
+                'date' => $request->date ?? null,
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to export data: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

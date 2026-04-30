@@ -12,7 +12,7 @@ use Carbon\Carbon;
 class FillL1Gaps extends Command
 {
     protected $signature = 'iot:fill-l1-gaps {device_id} {date?}';
-    protected $description = 'Fill gaps in L1 data to reach 720 data points (1 hour)';
+    protected $description = 'Fill gaps in L1 data to reach 60 data points (1 hour at 1-minute intervals)';
 
     public function handle()
     {
@@ -60,31 +60,23 @@ class FillL1Gaps extends Command
                 // Gap found - clone from last data
                 $this->line("  Filling gap at {$expectedTime->format('H:i:s')} (clone from {$lastData->measured_at->format('H:i:s')})");
                 
-                // Create in Telemetry
-                $newTelemetry = Telemetry::create([
-                    'device_id' => $deviceId,
-                    'temperature' => $lastData->temperature,
-                    'humidity' => $lastData->humidity,
-                    'noise_db' => $lastData->noise_db,
-                    'measured_at' => $expectedTime,
-                    'is_filled' => true,
-                    'fill_method' => 'copied', // Use valid enum value
-                ]);
-                
-                // Create in NoiseRawData
-                NoiseRawData::create([
+                // Create in NoiseRawData ONLY (not Telemetry - keep telemetry log clean)
+                $newData = NoiseRawData::create([
                     'device_id' => $deviceId,
                     'period' => 'L1',
-                    'noise_level' => $lastData->noise_db,
+                    'noise_level' => $lastData->noise_db ?? $lastData->noise_level,
                     'temperature' => $lastData->temperature,
                     'humidity' => $lastData->humidity,
                     'measured_at' => $expectedTime,
                     'is_filled' => true,
-                    'fill_method' => 'copied', // Use valid enum value
+                    'fill_method' => 'copied',
                 ]);
                 
+                // REMOVED: No longer create in Telemetry table
+                // This keeps the telemetry log clean (only real data)
+                
                 $filledCount++;
-                $lastData = $newTelemetry;
+                $lastData = $newData;
             } elseif ($found) {
                 $lastData = $found;
             }

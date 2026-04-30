@@ -11,6 +11,7 @@ interface PeriodSelectorProps {
 
 export default function PeriodSelector({ selectedPeriod, onChange, dataCount, onPeriodDoubleClick }: PeriodSelectorProps) {
     const periods = PERIODS;
+    const EXPECTED_DATA_POINTS = 60; // 2 hours * 30 data points per hour
 
     const getCurrentPeriod = () => {
         const hour = new Date().getHours();
@@ -27,7 +28,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {periods.map((period) => {
                 const count = dataCount?.[period.value] || 0;
-                const isComplete = count >= 720;
+                const isComplete = count >= EXPECTED_DATA_POINTS;
                 const isSelected = selectedPeriod === period.value;
                 const isCurrent = currentPeriod === period.value;
 
@@ -66,7 +67,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
                                         className={cn("h-full transition-all duration-500",
                                             isComplete ? "bg-green-500" : "bg-primary"
                                         )}
-                                        style={{ width: `${Math.min((count / 720) * 100, 100)}%` }}
+                                        style={{ width: `${Math.min((count / EXPECTED_DATA_POINTS) * 100, 100)}%` }}
                                     />
                                 </div>
                             </div>
@@ -74,7 +75,7 @@ export default function PeriodSelector({ selectedPeriod, onChange, dataCount, on
                                 "text-xs font-medium",
                                 isComplete ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                             )}>
-                                {count}/720
+                                {count}/{EXPECTED_DATA_POINTS}
                             </span>
                         </div>
 

@@ -68,7 +68,7 @@ class TimeoutHandlerService
         $firstGapTime = null;
         $lastGapTime = null;
         $batchInserts = [];
-        $batchTelemetry = [];
+        // REMOVED: $batchTelemetry - no longer fill telemetry table
 
         // Check each second in the period
         $expectedTime = $startTime->copy();
@@ -94,7 +94,7 @@ class TimeoutHandlerService
                 }
                 $lastGapTime = $expectedTime->copy();
 
-                // Prepare batch insert data
+                // Prepare batch insert data (ONLY for NoiseRawData, NOT Telemetry)
                 $batchInserts[] = [
                     'device_id' => $device->id,
                     'period' => $period,
@@ -109,26 +109,15 @@ class TimeoutHandlerService
                     'updated_at' => now(),
                 ];
 
-                $batchTelemetry[] = [
-                    'device_id' => $device->id,
-                    'temperature' => $lastData->temperature,
-                    'humidity' => $lastData->humidity,
-                    'noise_db' => $lastData->noise_level,
-                    'measured_at' => $expectedTime->copy(),
-                    'is_filled' => true,
-                    'fill_method' => 'copied',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                // REMOVED: No longer add to $batchTelemetry
 
                 $filledCount++;
 
                 // Batch insert every 100 records to avoid memory issues
                 if (count($batchInserts) >= 100) {
                     NoiseRawData::insert($batchInserts);
-                    \App\Models\Telemetry::insert($batchTelemetry);
+                    // REMOVED: Telemetry::insert($batchTelemetry);
                     $batchInserts = [];
-                    $batchTelemetry = [];
                 }
             }
 
@@ -139,7 +128,7 @@ class TimeoutHandlerService
         // Insert remaining batch
         if (count($batchInserts) > 0) {
             NoiseRawData::insert($batchInserts);
-            \App\Models\Telemetry::insert($batchTelemetry);
+            // REMOVED: Telemetry::insert($batchTelemetry);
         }
 
         // Log timeout entries if gaps were filled
@@ -171,6 +160,8 @@ class TimeoutHandlerService
      * Fill a missing data point by cloning the last available data
      * Returns the filled data for chaining
      * 
+     * NOTE: Only fills NoiseRawData, NOT Telemetry (to keep telemetry log clean)
+     * 
      * @param bool $logIndividual Whether to log each individual fill (default: false to prevent spam)
      */
     private function fillMissingPoint(Device $device, string $period, Carbon $timestamp, $lastData, bool $logIndividual = false)
@@ -182,12 +173,12 @@ class TimeoutHandlerService
             'expected_at' => $timestamp,
             'consecutive_count' => ($lastData->consecutive_timeouts ?? 0) + 1,
             'action_taken' => 'copied_previous',
-            'details' => 'Data filled by copying last available data',
+            'details' => 'Data filled by copying last available data (NoiseRawData only)',
         ]);
 
         // If we have previous data, clone it with new timestamp
         if ($lastData) {
-            // Fill NoiseRawData
+            // Fill NoiseRawData ONLY (not Telemetry)
             $filledData = NoiseRawData::create([
                 'device_id' => $device->id,
                 'period' => $period,
@@ -196,24 +187,16 @@ class TimeoutHandlerService
                 'humidity' => $lastData->humidity,
                 'measured_at' => $timestamp,
                 'is_filled' => true,
-                'fill_method' => 'copied', // Use valid enum value
+                'fill_method' => 'copied',
                 'consecutive_timeouts' => ($lastData->consecutive_timeouts ?? 0) + 1,
             ]);
 
-            // Also fill Telemetry table for consistency
-            \App\Models\Telemetry::create([
-                'device_id' => $device->id,
-                'temperature' => $lastData->temperature,
-                'humidity' => $lastData->humidity,
-                'noise_db' => $lastData->noise_level,
-                'measured_at' => $timestamp,
-                'is_filled' => true,
-                'fill_method' => 'copied', // Use valid enum value
-            ]);
+            // REMOVED: No longer fill Telemetry table
+            // This keeps the telemetry log clean (only real data)
 
             // Only log individual fills if explicitly requested (to prevent log spam)
             if ($logIndividual) {
-                Log::debug("Filled missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()}");
+                Log::debug("Filled missing data for device {$device->id}, period {$period} at {$timestamp->toDateTimeString()} (NoiseRawData only)");
             }
             
             return $filledData;
