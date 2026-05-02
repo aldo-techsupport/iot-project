@@ -67,6 +67,10 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
             number_format($summary->l2_leq, 2),
             number_format($summary->l3_leq, 2),
             number_format($summary->l4_leq, 2),
+            number_format($summary->l5_leq, 2),
+            number_format($summary->l6_leq, 2),
+            number_format($summary->l7_leq, 2),
+            number_format($summary->l8_leq, 2),
             $status,
             $summary->updated_at->format('Y-m-d H:i:s'),
         ];
@@ -89,6 +93,10 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
             'L2 Leq (dB)',
             'L3 Leq (dB)',
             'L4 Leq (dB)',
+            'L5 Leq (dB)',
+            'L6 Leq (dB)',
+            'L7 Leq (dB)',
+            'L8 Leq (dB)',
             'Status',
             'Last Updated',
         ];
@@ -100,7 +108,7 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
     public function styles(Worksheet $sheet)
     {
         // Header style
-        $sheet->getStyle('A1:M1')->applyFromArray([
+        $sheet->getStyle('A1:Q1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'size' => 12,
@@ -118,7 +126,7 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
 
         // Add borders to all cells
         $lastRow = $sheet->getHighestRow();
-        $sheet->getStyle("A1:M{$lastRow}")->applyFromArray([
+        $sheet->getStyle("A1:Q{$lastRow}")->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -129,8 +137,8 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
 
         // Center align numeric columns
         $sheet->getStyle("A2:A{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("D2:K{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("L2:L{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("D2:O{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("P2:P{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         return [];
     }

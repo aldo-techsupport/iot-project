@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'daily'),
+    'default' => env('LOG_CHANNEL', 'deduplicate'),
 
     /*
     |--------------------------------------------------------------------------
@@ -125,6 +125,13 @@ return [
 
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
+        ],
+
+        'deduplicate' => [
+            'driver' => 'custom',
+            'via' => \App\Logging\DeduplicateLogger::class,
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_LEVEL', 'info'),
         ],
 
     ],

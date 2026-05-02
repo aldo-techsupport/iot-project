@@ -16,10 +16,14 @@ interface DailySummary {
     twa_value: number;
     dnd_value: number;
     allowable_time: number;
-    l1_leq: number;
-    l2_leq: number;
-    l3_leq: number;
-    l4_leq: number;
+    l1_leq: number | null;
+    l2_leq: number | null;
+    l3_leq: number | null;
+    l4_leq: number | null;
+    l5_leq: number | null;
+    l6_leq: number | null;
+    l7_leq: number | null;
+    l8_leq: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -252,14 +256,14 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     Laeq 8h
                                 </p>
                                 <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                                    {summary.ls_value.toFixed(2)} dB
+                                    {Number(summary.ls_value).toFixed(2)} dB
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2">
                                     Formula: 10 × log(1/8 × Σ(Tᵢ × 10^(0.1×Lᵢ)))
                                 </p>
                             </div>
-                            <Badge variant={summary.ls_value > 85 ? 'destructive' : 'default'} className="text-lg px-4 py-2">
-                                {summary.ls_value > 85 ? 'Above Limit' : 'Normal'}
+                            <Badge variant={Number(summary.ls_value) > 85 ? 'destructive' : 'default'} className="text-lg px-4 py-2">
+                                {Number(summary.ls_value) > 85 ? 'Above Limit' : 'Normal'}
                             </Badge>
                         </div>
                     </div>
@@ -271,7 +275,7 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                 TWA (Time Weighted Average)
                             </p>
                             <p className="text-3xl font-bold">
-                                {summary.twa_value.toFixed(2)} dBA
+                                {Number(summary.twa_value).toFixed(2)} dBA
                             </p>
                             <p className="text-xs text-muted-foreground mt-2">
                                 Formula: 10 × log(DND/100) + 85
@@ -282,17 +286,17 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                 DND (Dosis Harian)
                             </p>
                             <p className="text-3xl font-bold">
-                                {summary.dnd_value.toFixed(2)}%
+                                {Number(summary.dnd_value).toFixed(2)}%
                             </p>
                             <p className="text-xs text-muted-foreground mt-2">
                                 Formula: D(%) = (C/T) × 100%, where T = 8 / 2^((L-85)/3)
                             </p>
-                            {summary.dnd_value > 100 && (
+                            {Number(summary.dnd_value) > 100 && (
                                 <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
                                     ⚠️ Exceeds safe limit (&gt;100%)
                                 </p>
                             )}
-                            {summary.dnd_value <= 100 && (
+                            {Number(summary.dnd_value) <= 100 && (
                                 <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
                                     ✓ Within safe limit (≤100%)
                                 </p>
@@ -361,30 +365,58 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L1</span>
-                                    <Badge variant="outline">2 hours</Badge>
+                                    <Badge variant="outline">1 hour</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l1_leq.toFixed(2)} dB(A)</p>
+                                <p className="text-2xl font-bold">{summary.l1_leq != null ? Number(summary.l1_leq).toFixed(2) : 'N/A'} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L2</span>
-                                    <Badge variant="outline">2 hours</Badge>
+                                    <Badge variant="outline">1 hour</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l2_leq.toFixed(2)} dB(A)</p>
+                                <p className="text-2xl font-bold">{summary.l2_leq != null ? Number(summary.l2_leq).toFixed(2) : 'N/A'} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L3</span>
-                                    <Badge variant="outline">2 hours</Badge>
+                                    <Badge variant="outline">1 hour</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l3_leq.toFixed(2)} dB(A)</p>
+                                <p className="text-2xl font-bold">{summary.l3_leq != null ? Number(summary.l3_leq).toFixed(2) : 'N/A'} dB(A)</p>
                             </div>
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium">L4</span>
-                                    <Badge variant="outline">2 hours</Badge>
+                                    <Badge variant="outline">1 hour</Badge>
                                 </div>
-                                <p className="text-2xl font-bold">{summary.l4_leq.toFixed(2)} dB(A)</p>
+                                <p className="text-2xl font-bold">{summary.l4_leq != null ? Number(summary.l4_leq).toFixed(2) : 'N/A'} dB(A)</p>
+                            </div>
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">L5</span>
+                                    <Badge variant="outline">1 hour</Badge>
+                                </div>
+                                <p className="text-2xl font-bold">{summary.l5_leq != null ? Number(summary.l5_leq).toFixed(2) : 'N/A'} dB(A)</p>
+                            </div>
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">L6</span>
+                                    <Badge variant="outline">1 hour</Badge>
+                                </div>
+                                <p className="text-2xl font-bold">{summary.l6_leq != null ? Number(summary.l6_leq).toFixed(2) : 'N/A'} dB(A)</p>
+                            </div>
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">L7</span>
+                                    <Badge variant="outline">1 hour</Badge>
+                                </div>
+                                <p className="text-2xl font-bold">{summary.l7_leq != null ? Number(summary.l7_leq).toFixed(2) : 'N/A'} dB(A)</p>
+                            </div>
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">L8</span>
+                                    <Badge variant="outline">1 hour</Badge>
+                                </div>
+                                <p className="text-2xl font-bold">{summary.l8_leq != null ? Number(summary.l8_leq).toFixed(2) : 'N/A'} dB(A)</p>
                             </div>
                         </div>
                     </div>
