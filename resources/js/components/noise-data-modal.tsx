@@ -121,16 +121,13 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                     <>
                         <div className="flex gap-4 rounded-lg bg-muted/50 p-3 text-sm">
                             <div>
-                                <span className="text-muted-foreground">Data Used:</span>{' '}
-                                <span className="font-semibold">{data.length}</span>
+                                <span className="text-muted-foreground">Data Points (1-min intervals):</span>{' '}
+                                <span className="font-semibold">{data.length} / 60</span>
                             </div>
                             <div>
-                                <span className="text-muted-foreground">Total Collected:</span>{' '}
+                                <span className="text-muted-foreground">Raw Telemetry Collected:</span>{' '}
                                 <span className="font-semibold">{totalCollected}</span>
-                            </div>
-                            <div>
-                                <span className="text-muted-foreground">From Official Period:</span>{' '}
-                                <span className="font-semibold">{fromOfficial}</span>
+                                <span className="text-xs text-muted-foreground ml-1">(5-sec intervals)</span>
                             </div>
                         </div>
 

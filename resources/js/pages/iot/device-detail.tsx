@@ -93,7 +93,7 @@ function MetricCard({
                     <div className="text-muted-foreground mt-2 text-xs">
                         <span>Min: {min.toFixed(1)}</span>
                         <span className="mx-2">|</span>
-                        <span>Avg: {avg.toFixed(1)}</span>
+                        <span>{avg.toFixed(1)}</span>
                         <span className="mx-2">|</span>
                         <span>Max: {max.toFixed(1)}</span>
                     </div>

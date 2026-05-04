@@ -47,6 +47,9 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
     const [data, setData] = useState<ThiDataPoint[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Check if selected date is today
+    const isToday = date === new Date().toISOString().split('T')[0];
+
     const fetchData = async () => {
         try {
             const params = new URLSearchParams({
@@ -138,43 +141,6 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
 
         return (
             <div className="space-y-4">
-                {/* Summary Cards */}
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Average THI</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{avgThi.toFixed(2)} °C</div>
-                            <p className={`text-xs mt-1 ${getThiCategory(avgThi).color}`}>
-                                {getThiCategory(avgThi).category}
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Min THI</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{minThi.toFixed(2)} °C</div>
-                            <p className={`text-xs mt-1 ${getThiCategory(minThi).color}`}>
-                                {getThiCategory(minThi).category}
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Max THI</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{maxThi.toFixed(2)} °C</div>
-                            <p className={`text-xs mt-1 ${getThiCategory(maxThi).color}`}>
-                                {getThiCategory(maxThi).category}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-
                 {/* Chart */}
                 <Card>
                     <CardHeader>
@@ -385,43 +351,6 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
     // Render Data View (Table)
     return (
         <div className="space-y-4">
-            {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Average THI</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{avgThi.toFixed(2)} °C</div>
-                        <p className={`text-xs mt-1 ${getThiCategory(avgThi).color}`}>
-                            {getThiCategory(avgThi).category}
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Min THI</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{minThi.toFixed(2)} °C</div>
-                        <p className={`text-xs mt-1 ${getThiCategory(minThi).color}`}>
-                            {getThiCategory(minThi).category}
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Max THI</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{maxThi.toFixed(2)} °C</div>
-                        <p className={`text-xs mt-1 ${getThiCategory(maxThi).color}`}>
-                            {getThiCategory(maxThi).category}
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
             {/* Hourly THI Table */}
             <Card>
                 <CardHeader>
@@ -431,36 +360,6 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                     </p>
                 </CardHeader>
                 <CardContent>
-                    {/* Visual Bar Chart */}
-                    <div className="mb-6 space-y-2">
-                        {data.map((point) => {
-                            const category = getThiCategory(point.thi);
-                            const maxValue = 100;
-                            const width = (point.thi / maxValue) * 100;
-
-                            return (
-                                <div key={point.hour} className="flex items-center gap-2">
-                                    <div className="w-16 text-sm font-medium">{point.time}</div>
-                                    <div className="flex-1 bg-muted rounded-full h-8 relative overflow-hidden">
-                                        <div
-                                            className={`h-full ${category.bgColor} transition-all duration-300 flex items-center justify-end pr-2`}
-                                            style={{ width: `${Math.min(width, 100)}%` }}
-                                        >
-                                            <span className={`text-sm font-bold ${category.color}`}>
-                                                {point.thi.toFixed(1)} °C
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="w-24 text-xs">
-                                        <span className={`${category.color} font-medium`}>
-                                            {category.category}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -476,6 +375,31 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                             <tbody>
                                 {data.map((point) => {
                                     const category = getThiCategory(point.thi);
+                                    
+                                    // Calculate minutes elapsed based on current time
+                                    let minutesElapsed: number;
+                                    
+                                    if (!isToday) {
+                                        // Past date - all hours should show 60/60
+                                        minutesElapsed = 60;
+                                    } else {
+                                        // Today - check current time
+                                        const now = new Date();
+                                        const pointHour = point.hour;
+                                        const currentHour = now.getHours();
+                                        
+                                        if (pointHour < currentHour) {
+                                            // Past hour - full 60 minutes
+                                            minutesElapsed = 60;
+                                        } else if (pointHour === currentHour) {
+                                            // Current hour - show current minute
+                                            minutesElapsed = now.getMinutes();
+                                        } else {
+                                            // Future hour - 0 minutes
+                                            minutesElapsed = 0;
+                                        }
+                                    }
+                                    
                                     return (
                                         <tr key={point.hour} className="border-b hover:bg-muted/50">
                                             <td className="p-2 font-medium">{point.time}</td>
@@ -488,7 +412,7 @@ export default function ThiChart({ deviceId, date, autoRefresh = false, viewMode
                                                 </span>
                                             </td>
                                             <td className="text-right p-2 text-muted-foreground">
-                                                {point.data_count} ({point.intervals_count} intervals)
+                                                {minutesElapsed}/60 ({point.intervals_count} intervals)
                                             </td>
                                         </tr>
                                     );

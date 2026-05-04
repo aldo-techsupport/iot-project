@@ -126,9 +126,6 @@ export default function PeriodBarView({
                                         </div>
                                         <div className="h-8 w-px bg-current opacity-30"></div>
                                         <div className="flex flex-col text-sm">
-                                            <span className="opacity-80">
-                                                Avg: {avgValue.toFixed(1)} dB
-                                            </span>
                                             <span className="text-xs opacity-60">
                                                 {calc.data_count}/60 points
                                             </span>
@@ -150,7 +147,7 @@ export default function PeriodBarView({
                                     {/* Progress Bar Background */}
                                     <div 
                                         className="bg-green-500 text-white px-3 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 transition-all duration-500 shadow-sm"
-                                        style={{ width: `${(calc.data_count / 720) * 100}%`, minWidth: '150px' }}
+                                        style={{ width: `${(calc.data_count / 60) * 100}%`, minWidth: '150px' }}
                                     >
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
                                             <span className="text-xs sm:text-sm font-medium whitespace-nowrap">Collecting data...</span>
@@ -159,7 +156,7 @@ export default function PeriodBarView({
                                             </span>
                                         </div>
                                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/20 backdrop-blur-sm whitespace-nowrap self-start sm:self-auto">
-                                            {((calc.data_count / 720) * 100).toFixed(1)}%
+                                            {((calc.data_count / 60) * 100).toFixed(1)}%
                                         </span>
                                     </div>
                                 </div>

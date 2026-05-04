@@ -98,9 +98,6 @@ export default function PeriodBarSelector({
                                         <span className="text-sm opacity-80">
                                             LAeq
                                         </span>
-                                        <span className="text-xs opacity-60">
-                                            | Avg: {avgValue.toFixed(1)} dB
-                                        </span>
                                     </div>
                                 ) : (
                                     <span className="text-sm">No data</span>
