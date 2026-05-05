@@ -18,6 +18,10 @@ class NoiseDailySummary extends Model
         'l2_leq',
         'l3_leq',
         'l4_leq',
+        'l5_leq',
+        'l6_leq',
+        'l7_leq',
+        'l8_leq',
     ];
 
     protected $casts = [
@@ -30,6 +34,10 @@ class NoiseDailySummary extends Model
         'l2_leq' => 'float',
         'l3_leq' => 'float',
         'l4_leq' => 'float',
+        'l5_leq' => 'float',
+        'l6_leq' => 'float',
+        'l7_leq' => 'float',
+        'l8_leq' => 'float',
     ];
 
     public function device(): BelongsTo

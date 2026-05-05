@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\ThiController;
 use App\Http\Controllers\IoT\DashboardController;
+use App\Http\Controllers\IoT\MasterDataController;
 use App\Http\Middleware\AuthenticateDevice;
 use Illuminate\Support\Facades\Route;
 
@@ -59,5 +60,24 @@ Route::prefix('v1')->group(function () {
 
         // GET THI data
         Route::get('/thi', [ThiController::class, 'getThiByDate']);
+    });
+
+    // Master Data Management endpoints
+    Route::prefix('master-data')->group(function () {
+        // View data endpoints
+        Route::get('/noise-raw', [MasterDataController::class, 'getNoiseRawData']);
+        Route::get('/noise-calculations', [MasterDataController::class, 'getNoiseCalculations']);
+        Route::get('/daily-summaries', [MasterDataController::class, 'getDailySummaries']);
+        Route::get('/timeout-logs', [MasterDataController::class, 'getTimeoutLogs']);
+        Route::get('/summary', [MasterDataController::class, 'getSummary']);
+        
+        // Edit data endpoints
+        Route::post('/noise-raw', [MasterDataController::class, 'addNoiseRawData']);
+        Route::put('/noise-raw/{id}', [MasterDataController::class, 'updateNoiseRawData']);
+        Route::delete('/noise-raw/{id}', [MasterDataController::class, 'deleteNoiseRawData']);
+        
+        // Recalculation endpoints
+        Route::post('/recalculate-period', [MasterDataController::class, 'recalculatePeriod']);
+        Route::post('/recalculate-daily', [MasterDataController::class, 'recalculateDaily']);
     });
 });
