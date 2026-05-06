@@ -65,13 +65,18 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
         static $counter = 0;
         $counter++;
 
+        // Calculate THI (Temperature Humidity Index)
+        $temperature = $data->temperature ?? 0;
+        $humidity = $data->humidity ?? 0;
+        $thi = $temperature - (0.55 - 0.0055 * $humidity) * ($temperature - 14.5);
+
         return [
             $counter,
             $data->measured_at->format('Y-m-d H:i:s'),
             number_format($data->noise_db ?? 0, 2),
-            number_format($data->temperature ?? 0, 2),
-            number_format($data->humidity ?? 0, 2),
-            ($data->is_filled ?? false) ? 'Filled' : 'OK',
+            number_format($temperature, 2),
+            number_format($humidity, 2),
+            number_format($thi, 2),
         ];
     }
 
@@ -86,7 +91,7 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
             'Noise Level (dB)',
             'Temperature (°C)',
             'Humidity (%)',
-            'Status',
+            'THI (°C)',
         ];
     }
 

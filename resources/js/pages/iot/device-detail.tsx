@@ -349,7 +349,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                             <span className="hidden sm:inline">Noise</span>
                         </button>
-                        <button
+                        {/* THI Tab - Hidden temporarily */}
+                        {/* <button
                             onClick={() => setActiveTab('thi')}
                             className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'thi'
                                 ? 'border-primary text-primary'
@@ -358,7 +359,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         >
                             <Gauge className="h-3.5 w-3.5 md:h-4 md:w-4" />
                             <span className="hidden sm:inline">THI</span>
-                        </button>
+                        </button> */}
                         <button
                             onClick={() => setActiveTab('daily')}
                             className={`flex items-center gap-1.5 md:gap-2 border-b-2 px-2 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'daily'
@@ -583,6 +584,28 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                             )}
 
                             <NoiseStatisticsPanel calculation={currentCalculation || null} loading={loadingNoise} />
+
+                            {/* THI Categories */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-sm">THI Categories</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        {[
+                                            { range: '< 27', category: 'Nyaman', color: 'text-green-700 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', description: 'Kondisi nyaman' },
+                                            { range: '27 - 29', category: 'Cukup Nyaman', color: 'text-yellow-700 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', description: 'Kondisi cukup nyaman' },
+                                            { range: '> 29', category: 'Tidak Nyaman', color: 'text-red-700 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', description: 'Kondisi tidak nyaman' },
+                                        ].map((item) => (
+                                            <div key={item.category} className={`p-3 rounded-lg ${item.bgColor}`}>
+                                                <div className={`font-semibold text-sm ${item.color}`}>{item.category}</div>
+                                                <div className="text-xs text-muted-foreground mt-1">THI {item.range}</div>
+                                                <div className="text-xs mt-1">{item.description}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                             {noiseViewMode === 'recharts' ? (
                                 <RealTimeNoiseChart

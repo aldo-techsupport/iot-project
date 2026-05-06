@@ -12,6 +12,34 @@ interface NoiseDataPoint {
     fill_method: string | null;
 }
 
+// Function to calculate THI (Temperature Humidity Index)
+function calculateTHI(temperature: number, humidity: number): number {
+    return temperature - (0.55 - 0.0055 * humidity) * (temperature - 14.5);
+}
+
+// Function to get THI category
+function getThiCategory(thi: number): { category: string; color: string; bgColor: string } {
+    if (thi > 29) {
+        return {
+            category: 'Tidak Nyaman',
+            color: 'text-red-800 dark:text-red-300',
+            bgColor: 'bg-red-100 dark:bg-red-900',
+        };
+    } else if (thi >= 27) {
+        return {
+            category: 'Cukup Nyaman',
+            color: 'text-yellow-800 dark:text-yellow-300',
+            bgColor: 'bg-yellow-100 dark:bg-yellow-900',
+        };
+    } else {
+        return {
+            category: 'Nyaman',
+            color: 'text-green-800 dark:text-green-300',
+            bgColor: 'bg-green-100 dark:bg-green-900',
+        };
+    }
+}
+
 interface NoiseDataModalProps {
     open: boolean;
     onClose: () => void;
@@ -140,35 +168,34 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                                         <th className="px-3 py-2 text-right font-semibold">Noise (dB)</th>
                                         <th className="px-3 py-2 text-right font-semibold">Temp (°C)</th>
                                         <th className="px-3 py-2 text-right font-semibold">Humidity (%)</th>
-                                        <th className="px-3 py-2 text-center font-semibold">Status</th>
+                                        <th className="px-3 py-2 text-right font-semibold">THI (°C)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.map((row, index) => (
-                                        <tr
-                                            key={index}
-                                            className={`border-b hover:bg-muted/30 ${row.is_filled ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
-                                        >
-                                            <td className="px-3 py-2">{index + 1}</td>
-                                            <td className="px-3 py-2 font-mono text-xs">
-                                                {new Date(row.measured_at).toLocaleString('id-ID')}
-                                            </td>
-                                            <td className="px-3 py-2 text-right font-medium">{row.noise_level.toFixed(2)}</td>
-                                            <td className="px-3 py-2 text-right">{row.temperature.toFixed(2)}</td>
-                                            <td className="px-3 py-2 text-right">{row.humidity.toFixed(2)}</td>
-                                            <td className="px-3 py-2 text-center">
-                                                {row.is_filled ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                                                        Filled
+                                    {data.map((row, index) => {
+                                        const thi = calculateTHI(row.temperature, row.humidity);
+                                        const thiCategory = getThiCategory(thi);
+                                        
+                                        return (
+                                            <tr
+                                                key={index}
+                                                className={`border-b hover:bg-muted/30 ${row.is_filled ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
+                                            >
+                                                <td className="px-3 py-2">{index + 1}</td>
+                                                <td className="px-3 py-2 font-mono text-xs">
+                                                    {new Date(row.measured_at).toLocaleString('id-ID')}
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-medium">{row.noise_level.toFixed(2)}</td>
+                                                <td className="px-3 py-2 text-right">{row.temperature.toFixed(2)}</td>
+                                                <td className="px-3 py-2 text-right">{row.humidity.toFixed(2)}</td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${thiCategory.bgColor} ${thiCategory.color}`}>
+                                                        {thi.toFixed(2)}
                                                     </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                                        OK
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
