@@ -158,6 +158,7 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(new Date());
+    const [pingTime, setPingTime] = useState<number | null>(null);
 
     // Noise Dashboard State
     const [selectedPeriod, setSelectedPeriod] = useState<Period>('L1');
@@ -182,9 +183,14 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
 
     const refresh = () => {
         setIsRefreshing(true);
+        const startTime = performance.now();
+        
         router.reload({
             only: ['device', 'chartData'],
             onFinish: () => {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                setPingTime(responseTime);
                 setIsRefreshing(false);
                 setLastUpdate(new Date());
             },
@@ -291,6 +297,17 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{device.name}</h1>
                             <StatusBadge status={device.status} />
+                            {pingTime !== null && (
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                                    pingTime < 200 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                        : pingTime < 500 
+                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                }`}>
+                                    {pingTime}ms
+                                </span>
+                            )}
                         </div>
                         <p className="text-muted-foreground">{device.location || 'No location set'}</p>
                     </div>
