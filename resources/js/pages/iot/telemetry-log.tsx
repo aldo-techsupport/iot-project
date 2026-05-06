@@ -29,6 +29,11 @@ function formatDateTime(dateString: string): string {
     });
 }
 
+// Function to calculate THI (Temperature Humidity Index)
+function calculateTHI(temperature: number, humidity: number): number {
+    return temperature - (0.55 - 0.0055 * humidity) * (temperature - 14.5);
+}
+
 export default function TelemetryLog({ device, telemetries, filters }: Props) {
     // Parse initial filters into Date objects
     const [fromDate, setFromDate] = useState<Date | undefined>(
@@ -147,36 +152,42 @@ export default function TelemetryLog({ device, telemetries, filters }: Props) {
                                         <th className="px-4 py-3 text-right text-sm font-medium">Temperature</th>
                                         <th className="px-4 py-3 text-right text-sm font-medium">Humidity</th>
                                         <th className="px-4 py-3 text-right text-sm font-medium">Noise</th>
+                                        <th className="px-4 py-3 text-right text-sm font-medium">THI</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {telemetries.data.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                                            <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                                                 No telemetry data found
                                             </td>
                                         </tr>
                                     ) : (
-                                        telemetries.data.map((t) => (
-                                            <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
-                                                <td className="px-4 py-3 text-sm">
-                                                    <div className="flex flex-col">
-                                                        <span>{formatDateTime(t.measured_at)}</span>
-                                                        {t.is_filled && (
-                                                            <span className={`mt-1 inline-flex w-fit items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase leading-none ${t.fill_method === 'zero'
-                                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                                }`}>
-                                                                TIMEOUT {t.fill_method === 'zero' ? '(OFFLINE)' : '(AUTO-FILLED)'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-sm font-mono">{t.temperature}°C</td>
-                                                <td className="px-4 py-3 text-right text-sm font-mono">{t.humidity}%</td>
-                                                <td className="px-4 py-3 text-right text-sm font-mono">{t.noise_db} dB(A)</td>
-                                            </tr>
-                                        ))
+                                        telemetries.data.map((t) => {
+                                            const thi = calculateTHI(t.temperature, t.humidity);
+                                            
+                                            return (
+                                                <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
+                                                    <td className="px-4 py-3 text-sm">
+                                                        <div className="flex flex-col">
+                                                            <span>{formatDateTime(t.measured_at)}</span>
+                                                            {t.is_filled && (
+                                                                <span className={`mt-1 inline-flex w-fit items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase leading-none ${t.fill_method === 'zero'
+                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                    }`}>
+                                                                    TIMEOUT {t.fill_method === 'zero' ? '(OFFLINE)' : '(AUTO-FILLED)'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-sm font-mono">{t.temperature}°C</td>
+                                                    <td className="px-4 py-3 text-right text-sm font-mono">{t.humidity}%</td>
+                                                    <td className="px-4 py-3 text-right text-sm font-mono">{t.noise_db} dB(A)</td>
+                                                    <td className="px-4 py-3 text-right text-sm font-mono">{thi.toFixed(2)}°C</td>
+                                                </tr>
+                                            );
+                                        })
                                     )}
                                 </tbody>
                             </table>
