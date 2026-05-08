@@ -11,24 +11,32 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import { Cpu, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { Cpu, LayoutGrid, Shield } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/iot',
-        icon: LayoutGrid,
-    },
-    {
-        title: 'IoT Monitoring',
-        href: '/iot/devices',
-        icon: Cpu,
-    },
-];
-
 export function AppSidebar() {
+    const { auth } = usePage().props as any;
+    const isAdmin = auth?.user?.is_admin || false;
+
+    const mainNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: '/iot',
+            icon: LayoutGrid,
+        },
+        {
+            title: 'IoT Monitoring',
+            href: '/iot/devices',
+            icon: Cpu,
+        },
+        ...(isAdmin ? [{
+            title: 'Admin Panel',
+            href: '/admin',
+            icon: Shield,
+        }] : []),
+    ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

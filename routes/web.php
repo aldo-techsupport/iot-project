@@ -15,6 +15,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect('/iot');
     })->name('dashboard');
 
+    // Admin Routes
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\AdminDataController::class, 'index'])->name('dashboard');
+        Route::post('/recalculate-noise-period', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateNoisePeriod'])->name('recalculate.noise.period');
+        Route::post('/recalculate-daily-summary', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateDailySummary'])->name('recalculate.daily');
+        Route::delete('/telemetry/{id}', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteTelemetry'])->name('delete.telemetry');
+        Route::delete('/noise-data/{id}', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteNoiseData'])->name('delete.noise');
+        Route::delete('/daily-summary/{id}', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteDailySummary'])->name('delete.daily');
+        Route::post('/bulk-delete-telemetry', [\App\Http\Controllers\Admin\AdminDataController::class, 'bulkDeleteTelemetry'])->name('bulk.delete.telemetry');
+        Route::post('/bulk-delete-noise', [\App\Http\Controllers\Admin\AdminDataController::class, 'bulkDeleteNoiseData'])->name('bulk.delete.noise');
+        
+        // Noise Data Management
+        Route::get('/noise-data/period', [\App\Http\Controllers\Admin\AdminDataController::class, 'getNoiseDataByPeriod'])->name('noise.data.period');
+        Route::post('/noise-data/add', [\App\Http\Controllers\Admin\AdminDataController::class, 'addNoiseData'])->name('noise.data.add');
+        Route::put('/noise-data/update', [\App\Http\Controllers\Admin\AdminDataController::class, 'updateNoiseData'])->name('noise.data.update');
+        Route::delete('/noise-data/delete', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteSingleNoiseData'])->name('noise.data.delete');
+    });
+
     // IoT Dashboard Routes
     Route::prefix('iot')->name('iot.')->group(function () {
         Route::get('/', [DashboardController::class, 'monitoring'])->name('dashboard');

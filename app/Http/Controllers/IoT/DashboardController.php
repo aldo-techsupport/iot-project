@@ -439,7 +439,7 @@ class DashboardController extends Controller
             $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
             $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-            // Select real data at 1-minute intervals from 1-hour telemetry data
+            // Try to get data from Telemetry first
             $selectedData = NoiseDataSelectionService::selectOneMinuteIntervalData(
                 $deviceId,
                 $period,
@@ -447,25 +447,53 @@ class DashboardController extends Controller
                 $officialEnd
             );
 
+            // If no telemetry data, try NoiseRawData
+            if ($selectedData->isEmpty()) {
+                \Log::info("No telemetry data found, trying NoiseRawData", [
+                    'device_id' => $deviceId,
+                    'period' => $period,
+                    'date' => $date,
+                ]);
+
+                $selectedData = \App\Models\NoiseRawData::where('device_id', $deviceId)
+                    ->whereBetween('measured_at', [$officialStart, $officialEnd])
+                    ->orderBy('measured_at')
+                    ->get();
+            }
+
             // Get total telemetry data collected from official period only
-            // Include both real and filled data
             $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
                 ->whereDate('measured_at', $date)
                 ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
                 ->count();
             
-            // All selected data are from official period (with tolerance for closest match)
+            // If still no telemetry, count NoiseRawData
+            if ($totalCollected === 0) {
+                $totalCollected = \App\Models\NoiseRawData::where('device_id', $deviceId)
+                    ->whereDate('measured_at', $date)
+                    ->whereBetween('measured_at', [$officialStart, $officialEnd])
+                    ->count();
+            }
+            
             $fromOfficial = $selectedData->count();
 
-            // Format response - map telemetry fields to noise data format
+            // Format response - handle both Telemetry and NoiseRawData
             $formattedData = $selectedData->map(fn($d) => [
-                'noise_level' => (float) ($d->noise_db ?? 0), // telemetry uses 'noise_db'
+                'noise_level' => (float) ($d->noise_db ?? $d->noise_level ?? 0),
                 'temperature' => (float) $d->temperature,
                 'humidity' => (float) $d->humidity,
                 'measured_at' => $d->measured_at->toIso8601String(),
-                'is_filled' => (bool) $d->is_filled,
-                'fill_method' => $d->fill_method,
+                'is_filled' => (bool) ($d->is_filled ?? false),
+                'fill_method' => $d->fill_method ?? null,
             ])->values();
+
+            \Log::info("Noise data fetched", [
+                'device_id' => $deviceId,
+                'period' => $period,
+                'date' => $date,
+                'count' => $formattedData->count(),
+                'total_collected' => $totalCollected,
+            ]);
 
             return response()->json([
                 'success' => true,

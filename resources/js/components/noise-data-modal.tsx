@@ -76,6 +76,8 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
             console.log('Response status:', response.status);
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
