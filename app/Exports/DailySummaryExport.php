@@ -63,6 +63,9 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
             number_format($summary->twa_value, 2),
             number_format($summary->dnd_value, 2),
             number_format($summary->allowable_time ?? 0, 2),
+            $summary->thi_avg_daily !== null ? number_format($summary->thi_avg_daily, 2) : 'N/A',
+            $summary->temperature_avg_daily !== null ? number_format($summary->temperature_avg_daily, 2) : 'N/A',
+            $summary->humidity_avg_daily !== null ? number_format($summary->humidity_avg_daily, 2) : 'N/A',
             number_format($summary->l1_leq, 2),
             number_format($summary->l2_leq, 2),
             number_format($summary->l3_leq, 2),
@@ -89,6 +92,9 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
             'TWA (dBA)',
             'DND (%)',
             'T (hours)',
+            'THI Avg Daily',
+            'Suhu Avg (°C)',
+            'Kelembapan Avg (%)',
             'L1 Leq (dB)',
             'L2 Leq (dB)',
             'L3 Leq (dB)',
@@ -108,7 +114,7 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
     public function styles(Worksheet $sheet)
     {
         // Header style
-        $sheet->getStyle('A1:Q1')->applyFromArray([
+        $sheet->getStyle('A1:T1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'size' => 12,
@@ -126,7 +132,7 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
 
         // Add borders to all cells
         $lastRow = $sheet->getHighestRow();
-        $sheet->getStyle("A1:Q{$lastRow}")->applyFromArray([
+        $sheet->getStyle("A1:T{$lastRow}")->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -137,8 +143,8 @@ class DailySummaryExport implements FromCollection, WithHeadings, WithMapping, W
 
         // Center align numeric columns
         $sheet->getStyle("A2:A{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("D2:O{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("P2:P{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("D2:R{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("S2:S{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         return [];
     }

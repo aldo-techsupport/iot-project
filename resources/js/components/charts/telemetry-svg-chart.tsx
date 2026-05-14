@@ -325,15 +325,15 @@ export default function TelemetrySvgChart({ data }: TelemetrySvgChartProps) {
                                             </text>
                                             {/* Temperature */}
                                             <text x={getX(i) + 15} y={padding.top + 42} fontSize="10" fill="#ef4444">
-                                                Temp: {d.temperature.toFixed(1)}°C
+                                                Temp: {d.temperature != null ? d.temperature.toFixed(1) : '-'}°C
                                             </text>
                                             {/* Humidity */}
                                             <text x={getX(i) + 15} y={padding.top + 58} fontSize="10" fill="#3b82f6">
-                                                Humidity: {d.humidity.toFixed(1)}%
+                                                Humidity: {d.humidity != null ? d.humidity.toFixed(1) : '-'}%
                                             </text>
                                             {/* Noise */}
                                             <text x={getX(i) + 15} y={padding.top + 74} fontSize="10" fill="#a855f7">
-                                                Noise: {d.noise_db.toFixed(1)} dB(A)
+                                                Noise: {d.noise_db != null ? d.noise_db.toFixed(1) : '-'} dB(A)
                                             </text>
                                         </g>
                                     )}

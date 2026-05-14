@@ -16,10 +16,12 @@ interface Props {
 
 interface NoiseData {
     id: number;
+    slot_index: number;
     measured_at: string;
     noise_db: number;
     temperature: number;
     humidity: number;
+    thi: number | null;
     is_filled: boolean;
     fill_method: string | null;
 }
@@ -468,17 +470,24 @@ export default function AdminDashboard({ stats }: Props) {
 
                             <div className="mb-4 text-sm text-muted-foreground">
                                 Total: {noiseDataList.length} / 60 data points
+                                <span className="ml-3 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                    Source: Filtered DB
+                                </span>
+                                <span className="ml-2 text-xs">
+                                    Filled: {noiseDataList.filter(d => d.is_filled).length} slot
+                                </span>
                             </div>
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead className="bg-muted">
                                         <tr>
-                                            <th className="px-3 py-2 text-left">No</th>
+                                            <th className="px-3 py-2 text-left">Slot</th>
                                             <th className="px-3 py-2 text-left">Timestamp</th>
                                             <th className="px-3 py-2 text-right">Noise (dB)</th>
                                             <th className="px-3 py-2 text-right">Temp (°C)</th>
                                             <th className="px-3 py-2 text-right">Humidity (%)</th>
+                                            <th className="px-3 py-2 text-right">THI</th>
                                             <th className="px-3 py-2 text-center">Status</th>
                                             <th className="px-3 py-2 text-center">Actions</th>
                                         </tr>
@@ -488,7 +497,7 @@ export default function AdminDashboard({ stats }: Props) {
                                             <tr key={data.id} className="border-b hover:bg-muted/30">
                                                 {editingNoiseData?.id === data.id ? (
                                                     <>
-                                                        <td className="px-3 py-2">{index + 1}</td>
+                                                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{data.slot_index}</td>
                                                         <td className="px-3 py-2 font-mono text-xs">
                                                             {new Date(data.measured_at).toLocaleString('id-ID')}
                                                         </td>
@@ -528,12 +537,9 @@ export default function AdminDashboard({ stats }: Props) {
                                                                 className="w-full rounded border px-2 py-1 text-right"
                                                             />
                                                         </td>
+                                                        <td className="px-3 py-2 text-right text-xs text-muted-foreground">—</td>
                                                         <td className="px-3 py-2 text-center">
-                                                            {data.is_filled ? (
-                                                                <span className="text-xs text-yellow-600">Filled</span>
-                                                            ) : (
-                                                                <span className="text-xs text-green-600">OK</span>
-                                                            )}
+                                                            <span className="text-xs text-yellow-600">Manual</span>
                                                         </td>
                                                         <td className="px-3 py-2 text-center">
                                                             <button
@@ -552,18 +558,33 @@ export default function AdminDashboard({ stats }: Props) {
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td className="px-3 py-2">{index + 1}</td>
+                                                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{data.slot_index}</td>
                                                         <td className="px-3 py-2 font-mono text-xs">
                                                             {new Date(data.measured_at).toLocaleString('id-ID')}
                                                         </td>
-                                                        <td className="px-3 py-2 text-right">{data.noise_db.toFixed(2)}</td>
-                                                        <td className="px-3 py-2 text-right">{data.temperature.toFixed(2)}</td>
-                                                        <td className="px-3 py-2 text-right">{data.humidity.toFixed(2)}</td>
+                                                        <td className="px-3 py-2 text-right">{data.noise_db != null ? data.noise_db.toFixed(2) : '-'}</td>
+                                                        <td className="px-3 py-2 text-right">{data.temperature != null ? data.temperature.toFixed(2) : '-'}</td>
+                                                        <td className="px-3 py-2 text-right">{data.humidity != null ? data.humidity.toFixed(2) : '-'}</td>
+                                                        <td className="px-3 py-2 text-right">
+                                                            {data.thi != null ? (
+                                                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                    data.thi >= 29 ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                                                                    : data.thi >= 27 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                                                    : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                                                }`}>
+                                                                    {data.thi.toFixed(2)}
+                                                                </span>
+                                                            ) : '-'}
+                                                        </td>
                                                         <td className="px-3 py-2 text-center">
-                                                            {data.is_filled ? (
-                                                                <span className="text-xs text-yellow-600">Filled</span>
+                                                            {!data.is_filled ? (
+                                                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">Real</span>
+                                                            ) : data.fill_method === 'manual' ? (
+                                                                <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">Manual</span>
+                                                            ) : data.fill_method === 'zero' ? (
+                                                                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300">Zero</span>
                                                             ) : (
-                                                                <span className="text-xs text-green-600">OK</span>
+                                                                <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">Copied</span>
                                                             )}
                                                         </td>
                                                         <td className="px-3 py-2 text-center">
@@ -577,7 +598,7 @@ export default function AdminDashboard({ stats }: Props) {
                                                             <button
                                                                 onClick={() => handleDeleteNoiseData(data.id)}
                                                                 className="text-red-600 hover:text-red-800"
-                                                                title="Delete"
+                                                                title="Reset slot (filled copy)"
                                                             >
                                                                 <Trash2 className="inline h-4 w-4" />
                                                             </button>

@@ -16,14 +16,25 @@ interface DailySummary {
     twa_value: number;
     dnd_value: number;
     allowable_time: number;
+    thi_avg_daily: number | null;
+    temperature_avg_daily: number | null;
+    humidity_avg_daily: number | null;
     l1_leq: number | null;
+    l1_thi_avg: number | null;
     l2_leq: number | null;
+    l2_thi_avg: number | null;
     l3_leq: number | null;
+    l3_thi_avg: number | null;
     l4_leq: number | null;
+    l4_thi_avg: number | null;
     l5_leq: number | null;
+    l5_thi_avg: number | null;
     l6_leq: number | null;
+    l6_thi_avg: number | null;
     l7_leq: number | null;
+    l7_thi_avg: number | null;
     l8_leq: number | null;
+    l8_thi_avg: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -268,8 +279,8 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                         </div>
                     </div>
 
-                    {/* TWA and DND */}
-                    <div className="grid gap-4 md:grid-cols-2">
+                    {/* TWA, DND and THI Daily Average */}
+                    <div className="grid gap-4 md:grid-cols-3">
                         <div className="rounded-lg border p-4">
                             <p className="text-sm font-medium text-muted-foreground mb-1">
                                 TWA (Time Weighted Average)
@@ -299,6 +310,67 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             {Number(summary.dnd_value) <= 100 && (
                                 <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
                                     ✓ Within safe limit (≤100%)
+                                </p>
+                            )}
+                        </div>
+                        <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 p-4">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                                THI Average (Daily)
+                            </p>
+                            <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
+                                {summary.thi_avg_daily != null ? Number(summary.thi_avg_daily).toFixed(2) : 'N/A'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Rata-rata THI dari periode L1-L8
+                            </p>
+                            {summary.thi_avg_daily != null && (
+                                <p className="text-xs text-orange-700 dark:text-orange-300 mt-2 font-medium">
+                                    {Number(summary.thi_avg_daily) < 24 ? '❄️ Sejuk' :
+                                     Number(summary.thi_avg_daily) < 27 ? '✓ Nyaman' :
+                                     Number(summary.thi_avg_daily) < 29 ? '⚠️ Agak Panas' :
+                                     '🔥 Panas'}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Temperature and Humidity Daily Average */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-lg border bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 p-4">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                                🌡️ Suhu Rata-rata (Daily)
+                            </p>
+                            <p className="text-3xl font-bold text-red-700 dark:text-red-300">
+                                {summary.temperature_avg_daily != null ? Number(summary.temperature_avg_daily).toFixed(2) : 'N/A'} °C
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Rata-rata suhu selama jam kerja (08:00-17:00)
+                            </p>
+                            {summary.temperature_avg_daily != null && (
+                                <p className="text-xs text-red-700 dark:text-red-300 mt-2 font-medium">
+                                    {Number(summary.temperature_avg_daily) < 24 ? '❄️ Dingin' :
+                                     Number(summary.temperature_avg_daily) < 28 ? '✓ Nyaman' :
+                                     Number(summary.temperature_avg_daily) < 32 ? '⚠️ Hangat' :
+                                     '🔥 Panas'}
+                                </p>
+                            )}
+                        </div>
+                        <div className="rounded-lg border bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 p-4">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">
+                                💧 Kelembapan Rata-rata (Daily)
+                            </p>
+                            <p className="text-3xl font-bold text-cyan-700 dark:text-cyan-300">
+                                {summary.humidity_avg_daily != null ? Number(summary.humidity_avg_daily).toFixed(2) : 'N/A'} %
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Rata-rata kelembapan selama jam kerja (08:00-17:00)
+                            </p>
+                            {summary.humidity_avg_daily != null && (
+                                <p className="text-xs text-cyan-700 dark:text-cyan-300 mt-2 font-medium">
+                                    {Number(summary.humidity_avg_daily) < 40 ? '🏜️ Kering' :
+                                     Number(summary.humidity_avg_daily) < 60 ? '✓ Ideal' :
+                                     Number(summary.humidity_avg_daily) < 70 ? '⚠️ Agak Lembab' :
+                                     '💦 Lembab'}
                                 </p>
                             )}
                         </div>

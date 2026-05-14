@@ -67,7 +67,7 @@ export default function RealTimeTelemetryChart({ data }: RealTimeTelemetryChartP
                                 {entry.name}
                             </span>
                             <span className="font-bold text-sm" style={{ color: entry.color }}>
-                                {entry.value.toFixed(1)}
+                                {entry.value != null ? entry.value.toFixed(1) : '-'}
                             </span>
                         </div>
                     ))}

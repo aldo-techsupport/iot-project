@@ -190,7 +190,23 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
             onFinish: () => {
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                setPingTime(responseTime);
+                
+                // Only show ping time if device is actually online (last_seen_at within 5 minutes)
+                if (device.last_seen_at) {
+                    const lastSeenTime = new Date(device.last_seen_at).getTime();
+                    const now = new Date().getTime();
+                    const minutesSinceLastSeen = (now - lastSeenTime) / 1000 / 60;
+                    
+                    // Only set ping time if device sent data within last 5 minutes
+                    if (minutesSinceLastSeen <= 5) {
+                        setPingTime(responseTime);
+                    } else {
+                        setPingTime(null);
+                    }
+                } else {
+                    setPingTime(null);
+                }
+                
                 setIsRefreshing(false);
                 setLastUpdate(new Date());
             },
@@ -261,27 +277,36 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
         }
     }, [activeTab, selectedDate]);
 
+    // Initialize ping time check on mount and when device status changes
+    useEffect(() => {
+        // Clear ping time if device is not online
+        if (device.status !== 'online') {
+            setPingTime(null);
+        }
+    }, [device.status]);
+
     const stats = useMemo(() => {
         if (chartData.length === 0) return null;
-        const temps = chartData.map((d) => d.temperature);
-        const humidities = chartData.map((d) => d.humidity);
-        const noises = chartData.map((d) => d.noise_db);
+        const temps = chartData.map((d) => d.temperature).filter((v): v is number => v != null);
+        const humidities = chartData.map((d) => d.humidity).filter((v): v is number => v != null);
+        const noises = chartData.map((d) => d.noise_db).filter((v): v is number => v != null);
+        if (temps.length === 0 && humidities.length === 0 && noises.length === 0) return null;
         return {
-            temperature: {
+            temperature: temps.length > 0 ? {
                 min: Math.min(...temps),
                 max: Math.max(...temps),
                 avg: temps.reduce((a, b) => a + b, 0) / temps.length,
-            },
-            humidity: {
+            } : undefined,
+            humidity: humidities.length > 0 ? {
                 min: Math.min(...humidities),
                 max: Math.max(...humidities),
                 avg: humidities.reduce((a, b) => a + b, 0) / humidities.length,
-            },
-            noise: {
+            } : undefined,
+            noise: noises.length > 0 ? {
                 min: Math.min(...noises),
                 max: Math.max(...noises),
                 avg: noises.reduce((a, b) => a + b, 0) / noises.length,
-            },
+            } : undefined,
         };
     }, [chartData]);
 
@@ -297,7 +322,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold">{device.name}</h1>
                             <StatusBadge status={device.status} />
-                            {pingTime !== null && (
+                            {/* Only show ping time if device is online (status check) */}
+                            {device.status === 'online' && pingTime !== null && (
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                                     pingTime < 200 
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
@@ -410,9 +436,9 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 unit="°C"
                                 icon={ThermometerSun}
                                 color="text-orange-500"
-                                min={stats?.temperature.min}
-                                max={stats?.temperature.max}
-                                avg={stats?.temperature.avg}
+                                min={stats?.temperature?.min}
+                                max={stats?.temperature?.max}
+                                avg={stats?.temperature?.avg}
                             />
                             <MetricCard
                                 title="Humidity"
@@ -420,9 +446,9 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 unit="%"
                                 icon={Droplets}
                                 color="text-blue-500"
-                                min={stats?.humidity.min}
-                                max={stats?.humidity.max}
-                                avg={stats?.humidity.avg}
+                                min={stats?.humidity?.min}
+                                max={stats?.humidity?.max}
+                                avg={stats?.humidity?.avg}
                             />
                             <MetricCard
                                 title="Noise Level"
@@ -430,9 +456,9 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 unit=" dB(A)"
                                 icon={Volume2}
                                 color="text-purple-500"
-                                min={stats?.noise.min}
-                                max={stats?.noise.max}
-                                avg={stats?.noise.avg}
+                                min={stats?.noise?.min}
+                                max={stats?.noise?.max}
+                                avg={stats?.noise?.avg}
                             />
                         </div>
 

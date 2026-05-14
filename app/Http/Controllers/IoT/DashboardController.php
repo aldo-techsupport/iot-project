@@ -8,6 +8,7 @@ use App\Models\Telemetry;
 use App\Models\NoiseRawData;
 use App\Models\NoiseCalculation;
 use App\Models\NoiseDailySummary;
+use App\Models\NoiseFilteredData;
 use App\Services\NoiseStatisticsService;
 use App\Services\NoiseDataSelectionService;
 use Illuminate\Http\Request;
@@ -424,7 +425,6 @@ class DashboardController extends Controller
         
         // Cache for 5 seconds (data updates every 5 seconds anyway)
         return \Cache::remember($cacheKey, 5, function () use ($deviceId, $period, $date) {
-            // Get official period times (8 periods, skip 12:00-13:00 lunch break)
             $periodTimes = [
                 'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
                 'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
@@ -437,71 +437,95 @@ class DashboardController extends Controller
             ];
 
             $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
-            $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
+            $officialEnd   = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-            // Try to get data from Telemetry first
+            // ── Prioritas 1: baca dari noise_filtered_data (sudah tersimpan saat kalkulasi) ──
+            $filteredRows = NoiseDataSelectionService::getFromDb((int) $deviceId, $period, $date);
+
+            if ($filteredRows->isNotEmpty()) {
+                $formattedData = $filteredRows->map(fn($d) => [
+                    'noise_level' => (float) $d->noise_level,
+                    'temperature' => (float) $d->temperature,
+                    'humidity'    => (float) $d->humidity,
+                    'measured_at' => $d->measured_at->toIso8601String(),
+                    'is_filled'   => (bool) $d->is_filled,
+                    'fill_method' => $d->fill_method,
+                    'slot_index'  => $d->slot_index,
+                    'source'      => 'filtered_db',
+                ])->values();
+
+                $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
+                    ->whereDate('measured_at', $date)
+                    ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
+                    ->count();
+
+                return response()->json([
+                    'success'              => true,
+                    'data'                 => $formattedData,
+                    'count'                => $formattedData->count(),
+                    'total_collected'      => $totalCollected,
+                    'from_official_period' => $formattedData->count(),
+                    'source'               => 'filtered_db',
+                    'cached_at'            => now()->toIso8601String(),
+                ]);
+            }
+
+            // ── Prioritas 2: period sedang berjalan → seleksi live dari telemetry ──
             $selectedData = NoiseDataSelectionService::selectOneMinuteIntervalData(
-                $deviceId,
-                $period,
-                $officialStart,
-                $officialEnd
+                $deviceId, $period, $officialStart, $officialEnd
             );
 
-            // If no telemetry data, try NoiseRawData
+            // Fallback ke NoiseRawData kalau telemetry kosong
             if ($selectedData->isEmpty()) {
                 \Log::info("No telemetry data found, trying NoiseRawData", [
                     'device_id' => $deviceId,
-                    'period' => $period,
-                    'date' => $date,
+                    'period'    => $period,
+                    'date'      => $date,
                 ]);
-
                 $selectedData = \App\Models\NoiseRawData::where('device_id', $deviceId)
                     ->whereBetween('measured_at', [$officialStart, $officialEnd])
                     ->orderBy('measured_at')
                     ->get();
             }
 
-            // Get total telemetry data collected from official period only
             $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
                 ->whereDate('measured_at', $date)
                 ->whereBetween('measured_at', [$officialStart, $officialEnd->copy()->addSeconds(10)])
                 ->count();
-            
-            // If still no telemetry, count NoiseRawData
+
             if ($totalCollected === 0) {
                 $totalCollected = \App\Models\NoiseRawData::where('device_id', $deviceId)
                     ->whereDate('measured_at', $date)
                     ->whereBetween('measured_at', [$officialStart, $officialEnd])
                     ->count();
             }
-            
-            $fromOfficial = $selectedData->count();
 
-            // Format response - handle both Telemetry and NoiseRawData
             $formattedData = $selectedData->map(fn($d) => [
                 'noise_level' => (float) ($d->noise_db ?? $d->noise_level ?? 0),
                 'temperature' => (float) $d->temperature,
-                'humidity' => (float) $d->humidity,
+                'humidity'    => (float) $d->humidity,
                 'measured_at' => $d->measured_at->toIso8601String(),
-                'is_filled' => (bool) ($d->is_filled ?? false),
+                'is_filled'   => (bool) ($d->is_filled ?? false),
                 'fill_method' => $d->fill_method ?? null,
+                'source'      => 'live',
             ])->values();
 
-            \Log::info("Noise data fetched", [
-                'device_id' => $deviceId,
-                'period' => $period,
-                'date' => $date,
-                'count' => $formattedData->count(),
+            \Log::info("Noise data fetched (live)", [
+                'device_id'       => $deviceId,
+                'period'          => $period,
+                'date'            => $date,
+                'count'           => $formattedData->count(),
                 'total_collected' => $totalCollected,
             ]);
 
             return response()->json([
-                'success' => true,
-                'data' => $formattedData,
-                'count' => $formattedData->count(),
-                'total_collected' => $totalCollected,
-                'from_official_period' => $fromOfficial,
-                'cached_at' => now()->toIso8601String(),
+                'success'              => true,
+                'data'                 => $formattedData,
+                'count'                => $formattedData->count(),
+                'total_collected'      => $totalCollected,
+                'from_official_period' => $formattedData->count(),
+                'source'               => 'live',
+                'cached_at'            => now()->toIso8601String(),
             ]);
         });
     }
@@ -543,30 +567,29 @@ class DashboardController extends Controller
         ];
 
         $officialStart = \Carbon\Carbon::parse("$date {$periodTimes[$period]['start']}");
-        $officialEnd = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
+        $officialEnd   = \Carbon\Carbon::parse("$date {$periodTimes[$period]['end']}");
 
-        // Select real data at 1-minute intervals (with 5-minute safety buffer before start)
-        $selectedData = NoiseDataSelectionService::selectOneMinuteIntervalData(
+        // Select 1-menit-per-data DAN simpan snapshot ke noise_filtered_data
+        $selectedData = NoiseDataSelectionService::selectAndPersist(
             $deviceId,
             $period,
             $officialStart,
-            $officialEnd
+            $officialEnd,
+            $date
         );
 
-        // Get total telemetry data collected (including 1-minute extended period)
-        // Include both real and filled data
-        $extendedStart = $officialStart->copy()->subMinute();
+        // Total telemetry yang dikumpulkan dalam period (real + filled)
+        $extendedStart  = $officialStart->copy()->subMinute();
         $totalCollected = \App\Models\Telemetry::where('device_id', $deviceId)
             ->whereDate('measured_at', $date)
             ->whereBetween('measured_at', [$extendedStart, $officialEnd])
             ->count();
 
-        // Convert to array for calculation
-        // Note: Telemetry model uses 'noise_db', not 'noise_level'
+        // Convert ke array untuk kalkulasi
         $rawData = $selectedData->map(fn($d) => [
             'noise_level' => (float) ($d->noise_db ?? $d->noise_level ?? 0),
             'temperature' => (float) $d->temperature,
-            'humidity' => (float) $d->humidity,
+            'humidity'    => (float) $d->humidity,
         ])->values()->toArray();
 
         $dataCount = count($rawData);
@@ -689,14 +712,25 @@ class DashboardController extends Controller
                 'twa_value' => $twa,
                 'dnd_value' => $dnd,
                 'allowable_time' => $allowableTime,
+                'thi_avg_daily' => $this->calculateDailyThiAverage($calculations),
+                'temperature_avg_daily' => $this->calculateDailyTemperatureAverage($deviceId, $date),
+                'humidity_avg_daily' => $this->calculateDailyHumidityAverage($deviceId, $date),
                 'l1_leq' => $periodData[0]['leq'],
+                'l1_thi_avg' => $calculations->get('L1')->thi_average,
                 'l2_leq' => $periodData[1]['leq'],
+                'l2_thi_avg' => $calculations->get('L2')->thi_average,
                 'l3_leq' => $periodData[2]['leq'],
+                'l3_thi_avg' => $calculations->get('L3')->thi_average,
                 'l4_leq' => $periodData[3]['leq'],
+                'l4_thi_avg' => $calculations->get('L4')->thi_average,
                 'l5_leq' => $periodData[4]['leq'],
+                'l5_thi_avg' => $calculations->get('L5')->thi_average,
                 'l6_leq' => $periodData[5]['leq'],
+                'l6_thi_avg' => $calculations->get('L6')->thi_average,
                 'l7_leq' => $periodData[6]['leq'],
+                'l7_thi_avg' => $calculations->get('L7')->thi_average,
                 'l8_leq' => $periodData[7]['leq'],
+                'l8_thi_avg' => $calculations->get('L8')->thi_average,
             ]
         );
         
@@ -712,6 +746,74 @@ class DashboardController extends Controller
                 'reference_level' => '85 dBA (NIOSH standard)',
             ],
         ]);
+    }
+
+    /**
+     * Calculate daily THI average from all 8 periods (L1-L8)
+     * 
+     * @param \Illuminate\Support\Collection $calculations Keyed by period
+     * @return float|null
+     */
+    private function calculateDailyThiAverage($calculations): ?float
+    {
+        $thiValues = [];
+        
+        foreach (['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'] as $period) {
+            $calc = $calculations->get($period);
+            if ($calc && $calc->thi_average !== null) {
+                $thiValues[] = (float) $calc->thi_average;
+            }
+        }
+        
+        if (empty($thiValues)) {
+            return null;
+        }
+        
+        return round(array_sum($thiValues) / count($thiValues), 2);
+    }
+
+    /**
+     * Calculate daily temperature average from telemetry data during work hours
+     * Work hours: 08:00-12:00 and 13:00-17:00 (skip lunch 12:00-13:00)
+     * 
+     * @param int $deviceId
+     * @param string $date
+     * @return float|null
+     */
+    private function calculateDailyTemperatureAverage(int $deviceId, string $date): ?float
+    {
+        $average = Telemetry::where('device_id', $deviceId)
+            ->whereDate('measured_at', $date)
+            ->whereNotNull('temperature')
+            ->where(function ($query) {
+                $query->whereRaw('HOUR(measured_at) BETWEEN 8 AND 11')
+                      ->orWhereRaw('HOUR(measured_at) BETWEEN 13 AND 16');
+            })
+            ->avg('temperature');
+
+        return $average !== null ? round((float) $average, 2) : null;
+    }
+
+    /**
+     * Calculate daily humidity average from telemetry data during work hours
+     * Work hours: 08:00-12:00 and 13:00-17:00 (skip lunch 12:00-13:00)
+     * 
+     * @param int $deviceId
+     * @param string $date
+     * @return float|null
+     */
+    private function calculateDailyHumidityAverage(int $deviceId, string $date): ?float
+    {
+        $average = Telemetry::where('device_id', $deviceId)
+            ->whereDate('measured_at', $date)
+            ->whereNotNull('humidity')
+            ->where(function ($query) {
+                $query->whereRaw('HOUR(measured_at) BETWEEN 8 AND 11')
+                      ->orWhereRaw('HOUR(measured_at) BETWEEN 13 AND 16');
+            })
+            ->avg('humidity');
+
+        return $average !== null ? round((float) $average, 2) : null;
     }
 
     /**
