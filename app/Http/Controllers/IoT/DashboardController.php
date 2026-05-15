@@ -121,6 +121,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L1')->data_count,
                                     'min_value' => $calculations->get('L1')->min_value,
                                     'max_value' => $calculations->get('L1')->max_value,
+                                    'is_valid' => $calculations->get('L1')->is_valid,
+                                    'invalid_reason' => $calculations->get('L1')->invalid_reason,
                                     'created_at' => $calculations->get('L1')->created_at->toIso8601String(),
                                 ] : null,
                                 'L2' => $calculations->get('L2') ? [
@@ -128,6 +130,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L2')->data_count,
                                     'min_value' => $calculations->get('L2')->min_value,
                                     'max_value' => $calculations->get('L2')->max_value,
+                                    'is_valid' => $calculations->get('L2')->is_valid,
+                                    'invalid_reason' => $calculations->get('L2')->invalid_reason,
                                     'created_at' => $calculations->get('L2')->created_at->toIso8601String(),
                                 ] : null,
                                 'L3' => $calculations->get('L3') ? [
@@ -135,6 +139,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L3')->data_count,
                                     'min_value' => $calculations->get('L3')->min_value,
                                     'max_value' => $calculations->get('L3')->max_value,
+                                    'is_valid' => $calculations->get('L3')->is_valid,
+                                    'invalid_reason' => $calculations->get('L3')->invalid_reason,
                                     'created_at' => $calculations->get('L3')->created_at->toIso8601String(),
                                 ] : null,
                                 'L4' => $calculations->get('L4') ? [
@@ -142,6 +148,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L4')->data_count,
                                     'min_value' => $calculations->get('L4')->min_value,
                                     'max_value' => $calculations->get('L4')->max_value,
+                                    'is_valid' => $calculations->get('L4')->is_valid,
+                                    'invalid_reason' => $calculations->get('L4')->invalid_reason,
                                     'created_at' => $calculations->get('L4')->created_at->toIso8601String(),
                                 ] : null,
                                 'L5' => $calculations->get('L5') ? [
@@ -149,6 +157,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L5')->data_count,
                                     'min_value' => $calculations->get('L5')->min_value,
                                     'max_value' => $calculations->get('L5')->max_value,
+                                    'is_valid' => $calculations->get('L5')->is_valid,
+                                    'invalid_reason' => $calculations->get('L5')->invalid_reason,
                                     'created_at' => $calculations->get('L5')->created_at->toIso8601String(),
                                 ] : null,
                                 'L6' => $calculations->get('L6') ? [
@@ -156,6 +166,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L6')->data_count,
                                     'min_value' => $calculations->get('L6')->min_value,
                                     'max_value' => $calculations->get('L6')->max_value,
+                                    'is_valid' => $calculations->get('L6')->is_valid,
+                                    'invalid_reason' => $calculations->get('L6')->invalid_reason,
                                     'created_at' => $calculations->get('L6')->created_at->toIso8601String(),
                                 ] : null,
                                 'L7' => $calculations->get('L7') ? [
@@ -163,6 +175,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L7')->data_count,
                                     'min_value' => $calculations->get('L7')->min_value,
                                     'max_value' => $calculations->get('L7')->max_value,
+                                    'is_valid' => $calculations->get('L7')->is_valid,
+                                    'invalid_reason' => $calculations->get('L7')->invalid_reason,
                                     'created_at' => $calculations->get('L7')->created_at->toIso8601String(),
                                 ] : null,
                                 'L8' => $calculations->get('L8') ? [
@@ -170,6 +184,8 @@ class DashboardController extends Controller
                                     'data_count' => $calculations->get('L8')->data_count,
                                     'min_value' => $calculations->get('L8')->min_value,
                                     'max_value' => $calculations->get('L8')->max_value,
+                                    'is_valid' => $calculations->get('L8')->is_valid,
+                                    'invalid_reason' => $calculations->get('L8')->invalid_reason,
                                     'created_at' => $calculations->get('L8')->created_at->toIso8601String(),
                                 ] : null,
                             ],
@@ -177,6 +193,9 @@ class DashboardController extends Controller
                                 'ls_value' => $dailySummary->ls_value,
                                 'twa_value' => $dailySummary->twa_value,
                                 'dnd_value' => $dailySummary->dnd_value,
+                                'is_valid' => $dailySummary->is_valid,
+                                'invalid_reason' => $dailySummary->invalid_reason,
+                                'invalid_periods' => $dailySummary->invalid_periods,
                             ] : null,
                             'timeout_logs' => $timeoutLogs->map(fn($log) => [
                                 'expected_at' => $log->expected_at->toIso8601String(),
@@ -619,6 +638,16 @@ class DashboardController extends Controller
         $results['total_collected'] = $totalCollected;
         $results['from_official_period'] = $dataCount; // All data is from official period now
 
+        // Determine validity: period is INVALID if data_count < 60 (incomplete hour)
+        $isValid = $dataCount >= \App\Models\NoiseCalculation::MIN_VALID_DATA_COUNT;
+        $invalidReason = null;
+        if (!$isValid) {
+            $invalidReason = "INVALID DATA: hanya {$dataCount}/60 data point tersedia untuk periode {$period}. "
+                . "Alat mungkin baru dinyalakan atau terjadi gangguan koneksi.";
+        }
+        $results['is_valid']       = $isValid;
+        $results['invalid_reason'] = $invalidReason;
+
         // Store or update calculation
         $calculation = NoiseCalculation::updateOrCreate(
             [
@@ -635,8 +664,10 @@ class DashboardController extends Controller
             'metadata' => [
                 'data_used' => $dataCount,
                 'total_collected' => $totalCollected,
-                'from_official_period' => $dataCount, // All data is from official period
+                'from_official_period' => $dataCount,
                 'collection_strategy' => $dataCount >= 60 ? 'full_dataset' : 'real_data_only',
+                'is_valid' => $isValid,
+                'invalid_reason' => $invalidReason,
             ],
         ]);
     }
@@ -667,6 +698,35 @@ class DashboardController extends Controller
                 'message' => 'Need all 8 periods (L1-L8) to calculate daily summary. Found: ' . $calculations->count(),
                 'available_periods' => $calculations->pluck('period')->toArray(),
             ], 400);
+        }
+
+        // Block daily summary if any period is marked INVALID
+        $invalidPeriods = $calculations->filter(fn($c) => !$c->is_valid)->keys()->toArray();
+        if (!empty($invalidPeriods)) {
+            // Upsert daily summary as INVALID so frontend can display the warning
+            $summary = NoiseDailySummary::updateOrCreate(
+                ['device_id' => $deviceId, 'calculation_date' => $date],
+                [
+                    'is_valid'       => false,
+                    'invalid_reason' => 'INVALID DATA: periode ' . implode(', ', $invalidPeriods) . ' tidak lengkap (data < 60 titik). Daily report tidak dapat dihitung.',
+                    'invalid_periods' => $invalidPeriods,
+                    // Reset calculated values so stale data is not shown
+                    'ls_value'   => null,
+                    'twa_value'  => null,
+                    'dnd_value'  => null,
+                    'allowable_time' => null,
+                ]
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Daily summary tidak dapat dihitung karena ada periode dengan INVALID DATA: ' . implode(', ', $invalidPeriods),
+                'invalid_periods' => $invalidPeriods,
+                'invalid_details' => $calculations->filter(fn($c) => !$c->is_valid)
+                    ->map(fn($c) => ['period' => $c->period, 'data_count' => $c->data_count, 'reason' => $c->invalid_reason])
+                    ->values(),
+                'data' => $summary,
+            ], 422);
         }
         
         // Prepare data for Ls calculation
@@ -701,13 +761,16 @@ class DashboardController extends Controller
         // Formula: TWA = 10 × log(DND/100) + 85
         $twa = $statsService->calculateTWA($dnd);
         
-        // Store daily summary
+        // Store daily summary (all periods valid)
         $summary = NoiseDailySummary::updateOrCreate(
             [
                 'device_id' => $deviceId,
                 'calculation_date' => $date,
             ],
             [
+                'is_valid'       => true,
+                'invalid_reason' => null,
+                'invalid_periods' => null,
                 'ls_value' => $ls,
                 'twa_value' => $twa,
                 'dnd_value' => $dnd,

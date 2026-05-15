@@ -7,6 +7,8 @@ interface Calculation {
     data_count: number;
     min_value: number;
     max_value: number;
+    is_valid: boolean;
+    invalid_reason?: string | null;
 }
 
 interface PeriodBarViewProps {
@@ -73,10 +75,13 @@ export default function PeriodBarView({
                 const hasCalculation = calc && (calc.leq_value > 0 || calc.average_value > 0);
                 const hasRawData = calc && calc.data_count > 0;
                 const hasData = hasCalculation || hasRawData;
+                const isInvalid = calc && !calc.is_valid;
                 
                 const leqValue = calc?.leq_value || 0;
                 const avgValue = calc?.average_value || 0;
-                const colorScheme = getNoiseColor(leqValue);
+                const colorScheme = isInvalid
+                    ? { bg: 'bg-gray-500', text: 'text-white', label: 'Invalid' }
+                    : getNoiseColor(leqValue);
 
                 return (
                     <button
@@ -118,10 +123,10 @@ export default function PeriodBarView({
                                     <div className="flex items-center gap-4">
                                         <div className="flex flex-col">
                                             <span className="text-2xl font-bold">
-                                                {leqValue.toFixed(1)} dB
+                                                {isInvalid ? '—' : `${leqValue.toFixed(1)} dB`}
                                             </span>
                                             <span className="text-xs opacity-80">
-                                                LAeq
+                                                {isInvalid ? 'INVALID DATA' : 'LAeq'}
                                             </span>
                                         </div>
                                         <div className="h-8 w-px bg-current opacity-30"></div>
@@ -129,6 +134,11 @@ export default function PeriodBarView({
                                             <span className="text-xs opacity-60">
                                                 {calc.data_count}/60 points
                                             </span>
+                                            {isInvalid && (
+                                                <span className="text-xs font-semibold mt-0.5 opacity-90">
+                                                    Data tidak lengkap
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     
@@ -136,9 +146,11 @@ export default function PeriodBarView({
                                     <div className="flex items-center gap-2">
                                         <span className={cn(
                                             "px-2 py-1 rounded text-xs font-semibold",
-                                            "bg-white/20 backdrop-blur-sm"
+                                            isInvalid
+                                                ? "bg-red-600/80 text-white"
+                                                : "bg-white/20 backdrop-blur-sm"
                                         )}>
-                                            {colorScheme.label}
+                                            {isInvalid ? '⚠ INVALID' : colorScheme.label}
                                         </span>
                                     </div>
                                 </div>

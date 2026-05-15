@@ -12,13 +12,16 @@ interface DailySummary {
     id: number;
     device_id: number;
     calculation_date: string;
-    ls_value: number;
-    twa_value: number;
-    dnd_value: number;
-    allowable_time: number;
+    ls_value: number | null;
+    twa_value: number | null;
+    dnd_value: number | null;
+    allowable_time: number | null;
     thi_avg_daily: number | null;
     temperature_avg_daily: number | null;
     humidity_avg_daily: number | null;
+    is_valid: boolean;
+    invalid_reason: string | null;
+    invalid_periods: string[] | null;
     l1_leq: number | null;
     l1_thi_avg: number | null;
     l2_leq: number | null;
@@ -141,7 +144,59 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                 <CardContent>
                     <div className="text-center text-muted-foreground py-12">
                         <p className="mb-2">No daily summary available for this date</p>
-                        <p className="text-sm">Complete all 4 periods (L1-L4) to generate daily report</p>
+                        <p className="text-sm">Complete all 8 periods (L1-L8) to generate daily report</p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Show INVALID DATA banner if daily summary is marked invalid
+    if (!summary.is_valid) {
+        return (
+            <Card className="border-red-300 dark:border-red-700">
+                <CardHeader className="bg-red-50 dark:bg-red-950 rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                        <span className="text-2xl">⚠</span>
+                        INVALID DATA — Daily Report Tidak Dapat Dihitung
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                    <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4">
+                        <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-2">
+                            Alasan:
+                        </p>
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                            {summary.invalid_reason}
+                        </p>
+                    </div>
+
+                    {summary.invalid_periods && summary.invalid_periods.length > 0 && (
+                        <div>
+                            <p className="text-sm font-semibold mb-2">Periode bermasalah:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {summary.invalid_periods.map((p) => (
+                                    <span
+                                        key={p}
+                                        className="px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm font-bold border border-red-300 dark:border-red-700"
+                                    >
+                                        {p} — INVALID
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 p-4">
+                        <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                            Apa yang harus dilakukan?
+                        </p>
+                        <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
+                            <li>Pastikan alat dinyalakan sebelum jam 08:00 (awal periode L1)</li>
+                            <li>Setiap periode membutuhkan minimal 60 data point (1 per menit)</li>
+                            <li>Periksa koneksi sensor jika terjadi gangguan di tengah periode</li>
+                            <li>Data dari periode yang tidak lengkap tidak dimasukkan ke laporan harian</li>
+                        </ul>
                     </div>
                 </CardContent>
             </Card>

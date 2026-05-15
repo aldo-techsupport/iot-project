@@ -51,17 +51,25 @@ class TimeoutHandlerService
         // Convert to set for O(1) lookup
         $existingSet = array_flip($existingTimestamps);
 
-        // Get the latest data point for this period (for cloning)
+        // Get the FIRST real data point for this period (to know when device actually started)
+        $firstRealData = NoiseRawData::where('device_id', $device->id)
+            ->where('period', $period)
+            ->whereDate('measured_at', $startTime->toDateString())
+            ->where('is_filled', false)
+            ->orderBy('measured_at', 'asc')
+            ->first();
+
+        // If no real data at all, skip filling (nothing to clone, device hasn't sent data yet)
+        if (!$firstRealData) {
+            return;
+        }
+
+        // Get the latest data point for this period (for cloning gaps AFTER first real data)
         $lastData = NoiseRawData::where('device_id', $device->id)
             ->where('period', $period)
             ->whereDate('measured_at', $startTime->toDateString())
             ->orderBy('measured_at', 'desc')
             ->first();
-
-        // If no data at all, skip filling (nothing to clone)
-        if (!$lastData) {
-            return;
-        }
 
         // Track filled data for summary logging
         $filledCount = 0;
@@ -70,8 +78,9 @@ class TimeoutHandlerService
         $batchInserts = [];
         // REMOVED: $batchTelemetry - no longer fill telemetry table
 
-        // Check each second in the period
-        $expectedTime = $startTime->copy();
+        // Only start filling FROM the first real data point, not from period start.
+        // This prevents backfilling slots before the device was turned on.
+        $expectedTime = $firstRealData->measured_at->copy()->second(0);
         $endCheck = $checkUntil->copy()->subSeconds($bufferSeconds);
 
         while ($expectedTime->lte($endCheck)) {

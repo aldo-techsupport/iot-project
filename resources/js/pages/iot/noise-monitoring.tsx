@@ -14,13 +14,15 @@ interface Device {
 
 interface NoiseCalculation {
     id: number;
-    period: 'L1' | 'L2' | 'L3' | 'L4';
+    period: 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8';
     min_value: number;
     max_value: number;
     average_value: number;
     leq_value: number;
     thi_average: number;
     data_count: number;
+    is_valid: boolean;
+    invalid_reason: string | null;
     calculation_date: string;
     updated_at: string;
 }

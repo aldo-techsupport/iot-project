@@ -31,6 +31,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/noise-data/add', [\App\Http\Controllers\Admin\AdminDataController::class, 'addNoiseData'])->name('noise.data.add');
         Route::put('/noise-data/update', [\App\Http\Controllers\Admin\AdminDataController::class, 'updateNoiseData'])->name('noise.data.update');
         Route::delete('/noise-data/delete', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteSingleNoiseData'])->name('noise.data.delete');
+
+        Route::get('/invalid-data', [\App\Http\Controllers\Admin\InvalidDataController::class, 'index'])->name('invalid.data');
+        Route::post('/invalid-data/fix-all', [\App\Http\Controllers\Admin\InvalidDataController::class, 'fixAll'])->name('invalid.data.fix.all');
+        Route::get('/invalid-data/preview-cleanup', [\App\Http\Controllers\Admin\InvalidDataController::class, 'previewCleanup'])->name('invalid.data.preview.cleanup');
+        Route::post('/invalid-data/cleanup', [\App\Http\Controllers\Admin\InvalidDataController::class, 'cleanupPreDeviceFills'])->name('invalid.data.cleanup');
     });
 
     // IoT Dashboard Routes

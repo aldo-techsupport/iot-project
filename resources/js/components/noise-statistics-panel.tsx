@@ -11,6 +11,8 @@ interface NoiseStatisticsPanelProps {
         leq_value: number;
         thi_average: number;
         data_count: number;
+        is_valid?: boolean;
+        invalid_reason?: string | null;
         updated_at?: string;
     } | null;
     loading?: boolean;
@@ -97,9 +99,22 @@ export default function NoiseStatisticsPanel({ calculation, loading }: NoiseStat
     };
 
     const leqBadge = getLeqBadge(calculation.leq_value);
+    const isInvalid = calculation.is_valid === false;
 
     return (
         <div className="space-y-4">
+            {/* INVALID DATA banner */}
+            {isInvalid && (
+                <div className="flex items-start gap-3 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 px-4 py-3">
+                    <span className="text-red-600 dark:text-red-400 text-lg font-bold mt-0.5">⚠</span>
+                    <div>
+                        <p className="text-sm font-bold text-red-700 dark:text-red-300">INVALID DATA</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                            {calculation.invalid_reason ?? `Hanya ${calculation.data_count}/60 data point tersedia. Hasil kalkulasi tidak valid.`}
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {stats.map((stat) => (
                     <Card key={stat.label} className={cn(stat.highlight && "ring-2 ring-primary border-primary")}>

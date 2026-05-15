@@ -24,6 +24,8 @@ interface Calculation {
     data_count: number;
     min_value: number;
     max_value: number;
+    is_valid: boolean;
+    invalid_reason?: string | null;
     created_at: string;
 }
 
@@ -58,9 +60,12 @@ interface DeviceMonitoring {
         L4: Calculation | null;
     };
     daily_summary: {
-        ls_value: number;
-        twa_value: number;
-        dnd_value: number;
+        ls_value: number | null;
+        twa_value: number | null;
+        dnd_value: number | null;
+        is_valid: boolean;
+        invalid_reason: string | null;
+        invalid_periods: string[] | null;
     } | null;
     timeout_logs: TimeoutLog[];
 }
@@ -342,11 +347,12 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                             return (
                                                 <div
                                                     key={period}
-                                                    className={`p-3 border rounded-lg space-y-1 transition-all ${calc ? 'hover:shadow-md cursor-pointer hover:border-primary' : ''
+                                                    className={`p-3 border rounded-lg space-y-1 transition-all ${calc && calc.is_valid ? 'hover:shadow-md cursor-pointer hover:border-primary' : ''
                                                         } ${selectedPeriods[device.id] === period ? 'border-primary bg-primary/5' : ''
+                                                        } ${calc && !calc.is_valid ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30' : ''
                                                         }`}
                                                     onClick={() => {
-                                                        if (calc) {
+                                                        if (calc && calc.is_valid) {
                                                             handlePeriodClick(device.id, period);
                                                         }
                                                     }}
@@ -354,14 +360,20 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-sm font-medium">{period}</span>
                                                         {calc ? (
-                                                            <Badge variant="default" className={safety?.color}>
-                                                                {calc.leq_value.toFixed(2)} dB(A)
-                                                            </Badge>
+                                                            calc.is_valid ? (
+                                                                <Badge variant="default" className={safety?.color}>
+                                                                    {calc.leq_value.toFixed(2)} dB(A)
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="destructive" className="text-xs">
+                                                                    ⚠ INVALID
+                                                                </Badge>
+                                                            )
                                                         ) : (
                                                             <Badge variant="outline" className="text-gray-500">No Data</Badge>
                                                         )}
                                                     </div>
-                                                    {calc && (
+                                                    {calc && calc.is_valid && (
                                                         <div className="text-xs space-y-0.5">
                                                             <div className={`font-semibold ${safety?.textColor}`}>
                                                                 {safety?.status}
@@ -374,6 +386,16 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {calc && !calc.is_valid && (
+                                                        <div className="text-xs space-y-0.5">
+                                                            <div className="font-semibold text-red-600 dark:text-red-400">
+                                                                Data tidak lengkap
+                                                            </div>
+                                                            <div className="text-red-500 dark:text-red-400">
+                                                                {calc.data_count}/60 points
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -382,31 +404,48 @@ export default function Monitoring({ devices, selectedDate, currentDate }: Monit
 
                                 {/* Daily Summary */}
                                 {device.daily_summary && (
-                                    <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                                        <h4 className="text-sm font-semibold mb-2 text-green-900 dark:text-green-100">
-                                            Daily Summary
-                                        </h4>
-                                        <div className="grid grid-cols-3 gap-4 text-sm">
-                                            <div>
-                                                <p className="text-xs text-green-700 dark:text-green-300">Ls</p>
-                                                <p className="font-semibold text-green-900 dark:text-green-100">
-                                                    {device.daily_summary.ls_value.toFixed(2)} dB(A)
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-green-700 dark:text-green-300">TWA</p>
-                                                <p className="font-semibold text-green-900 dark:text-green-100">
-                                                    {device.daily_summary.twa_value.toFixed(2)} dB(A)
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-green-700 dark:text-green-300">DND</p>
-                                                <p className="font-semibold text-green-900 dark:text-green-100">
-                                                    {device.daily_summary.dnd_value.toFixed(0)}%
-                                                </p>
+                                    device.daily_summary.is_valid ? (
+                                        <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                                            <h4 className="text-sm font-semibold mb-2 text-green-900 dark:text-green-100">
+                                                Daily Summary
+                                            </h4>
+                                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                                <div>
+                                                    <p className="text-xs text-green-700 dark:text-green-300">Ls</p>
+                                                    <p className="font-semibold text-green-900 dark:text-green-100">
+                                                        {device.daily_summary.ls_value?.toFixed(2)} dB(A)
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-green-700 dark:text-green-300">TWA</p>
+                                                    <p className="font-semibold text-green-900 dark:text-green-100">
+                                                        {device.daily_summary.twa_value?.toFixed(2)} dB(A)
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-green-700 dark:text-green-300">DND</p>
+                                                    <p className="font-semibold text-green-900 dark:text-green-100">
+                                                        {device.daily_summary.dnd_value?.toFixed(0)}%
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-300 dark:border-red-700">
+                                            <h4 className="text-sm font-semibold mb-1 text-red-800 dark:text-red-200 flex items-center gap-2">
+                                                <span>⚠</span> INVALID DATA — Daily Report
+                                            </h4>
+                                            <p className="text-xs text-red-600 dark:text-red-400">
+                                                Periode tidak lengkap:{' '}
+                                                <span className="font-bold">
+                                                    {device.daily_summary.invalid_periods?.join(', ')}
+                                                </span>
+                                            </p>
+                                            <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                                                Daily report tidak dapat dihitung
+                                            </p>
+                                        </div>
+                                    )
                                 )}
 
                                 {/* Timeout Logs */}

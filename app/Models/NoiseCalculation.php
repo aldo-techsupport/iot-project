@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class NoiseCalculation extends Model
 {
+    /** Minimum data points required for a period to be considered valid */
+    const MIN_VALID_DATA_COUNT = 60;
+
     protected $fillable = [
         'device_id',
         'period',
@@ -13,6 +16,8 @@ class NoiseCalculation extends Model
         'data_count',
         'total_collected',
         'from_official_period',
+        'is_valid',
+        'invalid_reason',
         'min_value',
         'max_value',
         'average_value',
@@ -29,6 +34,7 @@ class NoiseCalculation extends Model
         'data_count' => 'integer',
         'total_collected' => 'integer',
         'from_official_period' => 'integer',
+        'is_valid' => 'boolean',
         'min_value' => 'float',
         'max_value' => 'float',
         'average_value' => 'float',
@@ -69,7 +75,15 @@ class NoiseCalculation extends Model
      */
     public function isComplete(): bool
     {
-        return $this->data_count === 60;
+        return $this->data_count >= self::MIN_VALID_DATA_COUNT;
+    }
+
+    /**
+     * Scope: only valid calculations
+     */
+    public function scopeValid($query)
+    {
+        return $query->where('is_valid', true);
     }
 
     /**

@@ -32,6 +32,8 @@ interface NoiseCalculation {
     leq_value: number;
     thi_average: number;
     data_count: number;
+    is_valid: boolean;
+    invalid_reason: string | null;
     calculation_date: string;
     updated_at: string;
 }
@@ -589,6 +591,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                                 data_count: dataCount[calc.period as Period] || calc.data_count || 0,
                                                 min_value: calc.min_value,
                                                 max_value: calc.max_value,
+                                                is_valid: calc.is_valid,
+                                                invalid_reason: calc.invalid_reason,
                                             };
                                         });
                                         
@@ -601,6 +605,8 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                                     data_count: dataCount[period]!,
                                                     min_value: 0,
                                                     max_value: 0,
+                                                    is_valid: true,
+                                                    invalid_reason: null,
                                                 };
                                             }
                                         });

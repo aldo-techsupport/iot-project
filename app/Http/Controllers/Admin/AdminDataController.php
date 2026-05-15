@@ -214,6 +214,75 @@ class AdminDataController extends Controller
     }
 
     /**
+     * Add a new row to noise_filtered_data for a specific period slot,
+     * then trigger recalculate automatically.
+     */
+    public function addNoiseData(Request $request)
+    {
+        $validated = $request->validate([
+            'device_id'   => 'required|exists:devices,id',
+            'measured_at' => 'required|date',
+            'noise_db'    => 'required|numeric|min:0|max:200',
+            'temperature' => 'required|numeric|min:-50|max:100',
+            'humidity'    => 'required|numeric|min:0|max:100',
+        ]);
+
+        // Map time → period
+        $periodTimes = [
+            'L1' => ['start' => '08:00', 'end' => '09:00'],
+            'L2' => ['start' => '09:00', 'end' => '10:00'],
+            'L3' => ['start' => '10:00', 'end' => '11:00'],
+            'L4' => ['start' => '11:00', 'end' => '12:00'],
+            'L5' => ['start' => '13:00', 'end' => '14:00'],
+            'L6' => ['start' => '14:00', 'end' => '15:00'],
+            'L7' => ['start' => '15:00', 'end' => '16:00'],
+            'L8' => ['start' => '16:00', 'end' => '17:00'],
+        ];
+
+        $measuredAt = \Carbon\Carbon::parse($validated['measured_at']);
+        $timeStr    = $measuredAt->format('H:i');
+        $period     = null;
+
+        foreach ($periodTimes as $p => $range) {
+            if ($timeStr >= $range['start'] && $timeStr < $range['end']) {
+                $period = $p;
+                break;
+            }
+        }
+
+        if (!$period) {
+            return back()->with('error', 'Timestamp is outside any valid measurement period (L1–L8: 08:00–12:00, 13:00–17:00).');
+        }
+
+        $calculationDate = $measuredAt->toDateString();
+        $periodStart     = \Carbon\Carbon::parse($calculationDate . ' ' . $periodTimes[$period]['start'] . ':00');
+
+        // slot_index = minutes elapsed since period start (0-based)
+        $slotIndex = (int) $periodStart->diffInMinutes($measuredAt);
+
+        try {
+            NoiseFilteredData::create([
+                'device_id'        => $validated['device_id'],
+                'period'           => $period,
+                'calculation_date' => $calculationDate,
+                'noise_level'      => $validated['noise_db'],
+                'temperature'      => $validated['temperature'],
+                'humidity'         => $validated['humidity'],
+                'measured_at'      => $measuredAt->toDateTimeString(),
+                'is_filled'        => true,
+                'fill_method'      => 'manual',
+                'slot_index'       => $slotIndex,
+            ]);
+
+            $this->triggerRecalculate((int) $validated['device_id'], $period, $calculationDate);
+
+            return back()->with('success', "Data added to period {$period} at slot {$slotIndex} and recalculated successfully.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to add data: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Update a single filtered data row, lalu trigger recalculate otomatis
      */
     public function updateNoiseData(Request $request)

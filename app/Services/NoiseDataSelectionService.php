@@ -91,6 +91,9 @@ class NoiseDataSelectionService
             ->orderBy('measured_at')
             ->get();
 
+        // Cari data real pertama — slot sebelum ini tidak boleh diisi (alat belum nyala)
+        $firstRealData = $allData->where('is_filled', false)->sortBy('measured_at')->first();
+
         // Generate 60 expected timestamps
         $expectedTimestamps = [];
         $current = $officialStart->copy();
@@ -104,7 +107,14 @@ class NoiseDataSelectionService
         $slots        = []; // slot_index => Telemetry|null
 
         // Pass 1: cari data real/filled dalam window ±60 detik
+        // Slot yang expected time-nya SEBELUM data real pertama → langsung skip (null)
         foreach ($expectedTimestamps as $slotIndex => $expectedTime) {
+            // Jika belum ada data real sama sekali, atau slot ini sebelum alat nyala → skip
+            if ($firstRealData && $expectedTime->lt($firstRealData->measured_at->copy()->subSeconds(self::SEARCH_WINDOW_SECONDS))) {
+                $slots[$slotIndex] = null;
+                continue;
+            }
+
             $closest = self::findClosest($allData, $expectedTime, $usedIds, realOnly: true);
 
             if (!$closest) {
@@ -120,12 +130,18 @@ class NoiseDataSelectionService
             }
         }
 
-        // Pass 2: isi slot kosong dengan copy data terdekat (filled)
+        // Pass 2: isi slot kosong HANYA untuk gap di antara data real (bukan sebelum alat nyala)
+        // Slot sebelum firstRealData tetap null dan tidak akan diinsert ke DB
         $emptySlots = array_keys(array_filter($slots, fn($v) => $v === null));
 
-        if (!empty($emptySlots) && $allData->isNotEmpty()) {
+        if (!empty($emptySlots) && $allData->isNotEmpty() && $firstRealData) {
             foreach ($emptySlots as $slotIndex) {
                 $expectedTime = $expectedTimestamps[$slotIndex];
+
+                // Hanya fill gap SETELAH alat nyala (bukan sebelumnya)
+                if ($expectedTime->lt($firstRealData->measured_at->copy()->subSeconds(self::SEARCH_WINDOW_SECONDS))) {
+                    continue; // slot sebelum alat nyala → biarkan null
+                }
 
                 // Cari data terdekat dari seluruh period (tanpa batasan window)
                 $nearest = $allData->sortBy(

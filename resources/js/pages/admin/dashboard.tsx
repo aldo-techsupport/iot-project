@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Database, FileText, Activity, Trash2, RefreshCw, Calendar, Plus, Edit, List } from 'lucide-react';
+import { Database, FileText, Activity, Trash2, RefreshCw, Calendar, Plus, Edit, List, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -192,6 +192,28 @@ export default function AdminDashboard({ stats }: Props) {
                     <h1 className="text-2xl font-bold">Admin Dashboard</h1>
                     <p className="text-muted-foreground">Manage and recalculate system data</p>
                 </div>
+
+                {/* Quick Links */}
+                <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base text-red-700 dark:text-red-300">
+                            <ShieldAlert className="h-5 w-5" />
+                            Invalid Data Management
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Deteksi data fake (slot sebelum alat dinyalakan), bersihkan, dan hitung ulang periode yang terpengaruh.
+                        </p>
+                        <button
+                            onClick={() => router.visit('/admin/invalid-data')}
+                            className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 flex items-center gap-2"
+                        >
+                            <ShieldAlert className="h-4 w-4" />
+                            Buka Invalid Data Manager
+                        </button>
+                    </CardContent>
+                </Card>
 
                 {/* Statistics */}
                 <div className="grid gap-4 md:grid-cols-4">
