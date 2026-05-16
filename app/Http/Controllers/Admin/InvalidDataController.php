@@ -197,7 +197,7 @@ class InvalidDataController extends Controller
                         'device_name'    => $device->name,
                         'period'         => $period,
                         'rows_to_delete' => $preFilledCount,
-                        'reason'         => "Filled sebelum alat nyala",
+                        'reason'         => "Alat Offline / Jaringan Tidak Bagus",
                         'first_real_at'  => $firstReal->measured_at->format('H:i:s'),
                     ];
                 }

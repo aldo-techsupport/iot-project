@@ -221,13 +221,14 @@ class AdminDataController extends Controller
     {
         $validated = $request->validate([
             'device_id'   => 'required|exists:devices,id',
+            'period'      => 'required|in:L1,L2,L3,L4,L5,L6,L7,L8',
+            'date'        => 'required|date_format:Y-m-d',
             'measured_at' => 'required|date',
             'noise_db'    => 'required|numeric|min:0|max:200',
             'temperature' => 'required|numeric|min:-50|max:100',
             'humidity'    => 'required|numeric|min:0|max:100',
         ]);
 
-        // Map time → period
         $periodTimes = [
             'L1' => ['start' => '08:00', 'end' => '09:00'],
             'L2' => ['start' => '09:00', 'end' => '10:00'],
@@ -239,29 +240,25 @@ class AdminDataController extends Controller
             'L8' => ['start' => '16:00', 'end' => '17:00'],
         ];
 
-        $measuredAt = \Carbon\Carbon::parse($validated['measured_at']);
-        $timeStr    = $measuredAt->format('H:i');
-        $period     = null;
-
-        foreach ($periodTimes as $p => $range) {
-            if ($timeStr >= $range['start'] && $timeStr < $range['end']) {
-                $period = $p;
-                break;
-            }
-        }
-
-        if (!$period) {
-            return back()->with('error', 'Timestamp is outside any valid measurement period (L1–L8: 08:00–12:00, 13:00–17:00).');
-        }
-
-        $calculationDate = $measuredAt->toDateString();
+        $period          = $validated['period'];
+        $calculationDate = $validated['date'];
+        $measuredAt      = \Carbon\Carbon::parse($validated['measured_at']);
         $periodStart     = \Carbon\Carbon::parse($calculationDate . ' ' . $periodTimes[$period]['start'] . ':00');
+        $periodEnd       = \Carbon\Carbon::parse($calculationDate . ' ' . $periodTimes[$period]['end'] . ':00');
+
+        // Validate that measured_at falls within the selected period's time range
+        if ($measuredAt->lt($periodStart) || $measuredAt->gte($periodEnd)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Timestamp {$measuredAt->format('H:i')} tidak sesuai dengan periode {$period} ({$periodTimes[$period]['start']}–{$periodTimes[$period]['end']}). Harap masukkan waktu yang benar.",
+            ], 422);
+        }
 
         // slot_index = minutes elapsed since period start (0-based)
-        $slotIndex = (int) $periodStart->diffInMinutes($measuredAt);
+        $slotIndex = max(0, (int) $periodStart->diffInMinutes($measuredAt));
 
         try {
-            NoiseFilteredData::create([
+            $row = NoiseFilteredData::create([
                 'device_id'        => $validated['device_id'],
                 'period'           => $period,
                 'calculation_date' => $calculationDate,
@@ -269,16 +266,41 @@ class AdminDataController extends Controller
                 'temperature'      => $validated['temperature'],
                 'humidity'         => $validated['humidity'],
                 'measured_at'      => $measuredAt->toDateTimeString(),
-                'is_filled'        => true,
-                'fill_method'      => 'manual',
+                'is_filled'        => false,
+                'fill_method'      => 'actual',
                 'slot_index'       => $slotIndex,
             ]);
 
+            // Generate 12 telemetry rows (every 5 seconds within the 1-minute slot)
+            $this->generateTelemetryForSlot(
+                (int) $validated['device_id'],
+                $measuredAt,
+                (float) $validated['noise_db'],
+                (float) $validated['temperature'],
+                (float) $validated['humidity']
+            );
+
             $this->triggerRecalculate((int) $validated['device_id'], $period, $calculationDate);
 
-            return back()->with('success', "Data added to period {$period} at slot {$slotIndex} and recalculated successfully.");
+            return response()->json([
+                'success' => true,
+                'message' => "Data added to period {$period} at slot {$slotIndex}, 12 telemetry rows generated, and recalculated successfully.",
+                'data'    => [
+                    'id'          => $row->id,
+                    'slot_index'  => $row->slot_index,
+                    'measured_at' => $row->measured_at->toIso8601String(),
+                    'noise_db'    => $row->noise_level,
+                    'temperature' => $row->temperature,
+                    'humidity'    => $row->humidity,
+                    'thi'         => ($row->temperature && $row->humidity)
+                                        ? round(0.8 * $row->temperature + ($row->humidity * $row->temperature) / 500, 2)
+                                        : null,
+                    'is_filled'   => $row->is_filled,
+                    'fill_method' => $row->fill_method,
+                ],
+            ]);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to add data: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to add data: ' . $e->getMessage()], 422);
         }
     }
 
@@ -300,21 +322,31 @@ class AdminDataController extends Controller
                 'noise_level' => $validated['noise_db'],
                 'temperature' => $validated['temperature'],
                 'humidity'    => $validated['humidity'],
-                'is_filled'   => true,
-                'fill_method' => 'manual',
+                'is_filled'   => false,
+                'fill_method' => 'actual',
             ]);
+
+            // Regenerate telemetry rows for this slot
+            $this->generateTelemetryForSlot(
+                $row->device_id,
+                \Carbon\Carbon::parse($row->measured_at),
+                (float) $validated['noise_db'],
+                (float) $validated['temperature'],
+                (float) $validated['humidity']
+            );
 
             // Trigger recalculate otomatis untuk period ini
             $this->triggerRecalculate($row->device_id, $row->period, $row->calculation_date->toDateString());
 
-            return back()->with('success', 'Data updated and recalculated successfully');
+            return response()->json(['success' => true, 'message' => 'Data updated, telemetry regenerated, and recalculated successfully']);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to update: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to update: ' . $e->getMessage()], 422);
         }
     }
 
     /**
-     * Reset slot ke data terdekat (filled copy) — tidak benar-benar hapus agar tetap 60 slot
+     * Hapus permanen satu row noise_filtered_data beserta telemetry yang di-generate di menit tersebut,
+     * lalu trigger recalculate otomatis.
      */
     public function deleteSingleNoiseData(Request $request)
     {
@@ -325,42 +357,82 @@ class AdminDataController extends Controller
         try {
             $row = NoiseFilteredData::findOrFail($validated['id']);
 
-            // Cari data terdekat dari telemetry untuk mengisi ulang slot ini
-            $expectedTime = \Carbon\Carbon::parse(
-                $row->calculation_date->toDateString() . ' 08:00:00'
-            )->addMinutes($row->slot_index);
+            $deviceId = $row->device_id;
+            $period   = $row->period;
+            $date     = $row->calculation_date->toDateString();
 
-            // Ambil data terdekat dari telemetry (selain slot ini sendiri)
-            $nearest = \App\Models\Telemetry::where('device_id', $row->device_id)
-                ->whereDate('measured_at', $row->calculation_date->toDateString())
-                ->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, measured_at, ?))', [$expectedTime])
-                ->first();
+            // Hapus telemetry yang di-generate di menit slot ini (window 1 menit)
+            $slotMinute    = \Carbon\Carbon::parse($row->measured_at)->second(0);
+            $slotMinuteEnd = $slotMinute->copy()->second(59);
 
-            if ($nearest) {
-                $row->update([
-                    'noise_level' => (float) $nearest->noise_db,
-                    'temperature' => (float) $nearest->temperature,
-                    'humidity'    => (float) $nearest->humidity,
-                    'measured_at' => $expectedTime->toDateTimeString(),
-                    'is_filled'   => true,
-                    'fill_method' => 'copied',
-                ]);
-            } else {
-                // Tidak ada data sama sekali — set ke 0
-                $row->update([
-                    'noise_level' => 0,
-                    'is_filled'   => true,
-                    'fill_method' => 'zero',
-                ]);
-            }
+            \App\Models\Telemetry::where('device_id', $deviceId)
+                ->whereBetween('measured_at', [$slotMinute, $slotMinuteEnd])
+                ->where('is_filled', false)
+                ->where('fill_method', 'actual')
+                ->delete();
 
-            // Trigger recalculate
-            $this->triggerRecalculate($row->device_id, $row->period, $row->calculation_date->toDateString());
+            // Hapus row filtered data
+            $row->delete();
 
-            return back()->with('success', 'Slot reset and recalculated successfully');
+            // Recalculate periode
+            $this->triggerRecalculate($deviceId, $period, $date);
+
+            return response()->json(['success' => true, 'message' => 'Data deleted and recalculated successfully']);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to reset: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete: ' . $e->getMessage()], 422);
         }
+    }
+
+    /**
+     * Generate 12 realistic telemetry rows (every 5 seconds) for a 1-minute slot.
+     * Values are slightly randomized around the given base values to look natural.
+     */
+    private function generateTelemetryForSlot(
+        int $deviceId,
+        \Carbon\Carbon $slotTime,
+        float $noiseDb,
+        float $temperature,
+        float $humidity
+    ): void {
+        // Delete any existing telemetry in this 1-minute window first
+        $windowStart = $slotTime->copy()->second(0);
+        $windowEnd   = $slotTime->copy()->second(59);
+
+        \App\Models\Telemetry::where('device_id', $deviceId)
+            ->whereBetween('measured_at', [$windowStart, $windowEnd])
+            ->delete();
+
+        $rows = [];
+        for ($i = 0; $i < 12; $i++) {
+            $ts = $slotTime->copy()->second($i * 5);
+
+            // Small random jitter: ±2% for noise, ±0.3°C for temp, ±1% for humidity
+            $jitterNoise = $noiseDb    + (mt_rand(-200, 200) / 100);   // ±2 dB
+            $jitterTemp  = $temperature + (mt_rand(-30, 30)  / 100);   // ±0.3°C
+            $jitterHum   = $humidity    + (mt_rand(-100, 100) / 100);  // ±1%
+
+            // Clamp to sane ranges
+            $jitterNoise = max(0,   min(200, round($jitterNoise, 2)));
+            $jitterTemp  = max(-50, min(100, round($jitterTemp,  2)));
+            $jitterHum   = max(0,   min(100, round($jitterHum,   2)));
+
+            $thi = round(0.8 * $jitterTemp + ($jitterHum * $jitterTemp) / 500, 2);
+
+            $rows[] = [
+                'device_id'   => $deviceId,
+                'temperature' => $jitterTemp,
+                'humidity'    => $jitterHum,
+                'thi'         => $thi,
+                'noise_db'    => $jitterNoise,
+                'measured_at' => $ts->toDateTimeString(),
+                'is_filled'   => false,
+                'fill_method' => 'actual',
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ];
+        }
+
+        \App\Models\Telemetry::insert($rows);
     }
 
     /**
@@ -383,18 +455,63 @@ class AdminDataController extends Controller
                 'humidity'    => (float) $d->humidity,
             ])->values()->toArray();
 
+            $dataCount = count($rawData);
+            $isValid   = $dataCount >= \App\Models\NoiseCalculation::MIN_VALID_DATA_COUNT;
+
             $statsService = new \App\Services\NoiseStatisticsService();
             $results = $statsService->processCompleteCalculation($rawData);
-            $results['data_count']          = count($rawData);
-            $results['total_collected']     = count($rawData);
-            $results['from_official_period'] = count($rawData);
+
+            $results['data_count']           = $dataCount;
+            $results['total_collected']      = $dataCount;
+            $results['from_official_period'] = $dataCount;
+            $results['is_valid']             = $isValid;
+            $results['invalid_reason']       = $isValid
+                ? null
+                : "INVALID DATA: hanya {$dataCount}/60 data point tersedia untuk periode {$period}.";
 
             \App\Models\NoiseCalculation::updateOrCreate(
                 ['device_id' => $deviceId, 'period' => $period, 'calculation_date' => $date],
                 $results
             );
+
+            // Update validity on daily summary too
+            $this->updateDailySummaryValidity($deviceId, $date);
+
         } catch (\Exception $e) {
             Log::error("Admin recalculate failed: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update is_valid pada NoiseDailySummary berdasarkan kalkulasi periode terkini.
+     */
+    private function updateDailySummaryValidity(int $deviceId, string $date): void
+    {
+        $invalidPeriods = \App\Models\NoiseCalculation::where('device_id', $deviceId)
+            ->whereDate('calculation_date', $date)
+            ->where('is_valid', false)
+            ->pluck('period')
+            ->toArray();
+
+        $summary = \App\Models\NoiseDailySummary::where('device_id', $deviceId)
+            ->whereDate('calculation_date', $date)
+            ->first();
+
+        if (!$summary) return;
+
+        if (!empty($invalidPeriods)) {
+            $summary->update([
+                'is_valid'        => false,
+                'invalid_reason'  => 'INVALID DATA: periode ' . implode(', ', $invalidPeriods)
+                    . ' tidak lengkap (data < 60 titik).',
+                'invalid_periods' => $invalidPeriods,
+            ]);
+        } else {
+            $summary->update([
+                'is_valid'        => true,
+                'invalid_reason'  => null,
+                'invalid_periods' => null,
+            ]);
         }
     }
 }

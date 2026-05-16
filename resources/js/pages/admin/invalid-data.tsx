@@ -191,7 +191,7 @@ export default function InvalidData({
 
         if (
             !confirm(
-                `Hapus ${previewTotal} baris noise_raw_data (filled sebelum alat nyala) untuk tanggal ${cleanupDate}?\n\nKalkulasi & filtered data terkait juga akan dihapus agar bisa dihitung ulang.\n\nProses ini tidak dapat dibatalkan.`,
+                `Hapus ${previewTotal} baris noise_raw_data (Alat Offline / Jaringan Tidak Bagus) untuk tanggal ${cleanupDate}?\n\nKalkulasi & filtered data terkait juga akan dihapus agar bisa dihitung ulang.\n\nProses ini tidak dapat dibatalkan.`,
             )
         )
             return;

@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { Database, FileText, Activity, Trash2, RefreshCw, Calendar, Plus, Edit, List, ShieldAlert } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { Database, FileText, Activity, Trash2, RefreshCw, Calendar, Plus, Edit, List, ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -26,19 +26,34 @@ interface NoiseData {
     fill_method: string | null;
 }
 
+interface Toast {
+    type: 'success' | 'error';
+    message: string;
+}
+
+function getCsrfToken(): string {
+    // Laravel sets XSRF-TOKEN cookie automatically; decode it for use as X-XSRF-TOKEN header
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
 export default function AdminDashboard({ stats }: Props) {
     const [selectedDevice, setSelectedDevice] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedPeriod, setSelectedPeriod] = useState('L1');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    
+
     // Noise Data Management
     const [noiseDataList, setNoiseDataList] = useState<NoiseData[]>([]);
     const [showNoiseDataModal, setShowNoiseDataModal] = useState(false);
     const [editingNoiseData, setEditingNoiseData] = useState<NoiseData | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
-    
+    const [loadingAction, setLoadingAction] = useState(false);
+
+    // Toast
+    const [toast, setToast] = useState<Toast | null>(null);
+
     // Form states
     const [newNoiseData, setNewNoiseData] = useState({
         measured_at: '',
@@ -52,6 +67,11 @@ export default function AdminDashboard({ stats }: Props) {
         { title: 'Admin', href: '/admin' },
     ];
 
+    const showToast = (type: 'success' | 'error', message: string) => {
+        setToast({ type, message });
+        setTimeout(() => setToast(null), 4000);
+    };
+
     const handleRecalculateNoisePeriod = () => {
         if (!selectedDevice || !selectedDate || !selectedPeriod) {
             alert('Please fill all fields');
@@ -62,6 +82,9 @@ export default function AdminDashboard({ stats }: Props) {
             device_id: selectedDevice,
             date: selectedDate,
             period: selectedPeriod,
+        }, {
+            onSuccess: () => showToast('success', 'Noise period recalculated successfully'),
+            onError: () => showToast('error', 'Failed to recalculate noise period'),
         });
     };
 
@@ -74,6 +97,9 @@ export default function AdminDashboard({ stats }: Props) {
         router.post('/admin/recalculate-daily-summary', {
             device_id: selectedDevice,
             date: selectedDate,
+        }, {
+            onSuccess: () => showToast('success', 'Daily summary recalculated successfully'),
+            onError: () => showToast('error', 'Failed to recalculate daily summary'),
         });
     };
 
@@ -91,6 +117,9 @@ export default function AdminDashboard({ stats }: Props) {
             device_id: selectedDevice,
             start_date: startDate,
             end_date: endDate,
+        }, {
+            onSuccess: () => showToast('success', 'Telemetry data deleted successfully'),
+            onError: () => showToast('error', 'Failed to delete telemetry data'),
         });
     };
 
@@ -108,6 +137,9 @@ export default function AdminDashboard({ stats }: Props) {
             device_id: selectedDevice,
             start_date: startDate,
             end_date: endDate,
+        }, {
+            onSuccess: () => showToast('success', 'Noise data deleted successfully'),
+            onError: () => showToast('error', 'Failed to delete noise data'),
         });
     };
 
@@ -131,57 +163,170 @@ export default function AdminDashboard({ stats }: Props) {
                 setNoiseDataList(result.data);
                 setShowNoiseDataModal(true);
             } else {
-                alert('Failed to load data');
+                showToast('error', 'Failed to load data');
             }
         } catch (error) {
             console.error('Failed to load noise data:', error);
-            alert('Failed to load data');
+            showToast('error', 'Failed to load data');
         }
     };
 
-    const handleAddNoiseData = () => {
+    const refreshNoiseData = async () => {
+        try {
+            const params = new URLSearchParams({
+                device_id: selectedDevice,
+                date: selectedDate,
+                period: selectedPeriod,
+            });
+
+            const response = await fetch(`/admin/noise-data/period?${params}`);
+            const result = await response.json();
+
+            if (result.success) {
+                setNoiseDataList(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to refresh noise data:', error);
+        }
+    };
+
+    const handleAddNoiseData = async () => {
         if (!selectedDevice || !newNoiseData.measured_at || !newNoiseData.noise_db || !newNoiseData.temperature || !newNoiseData.humidity) {
             alert('Please fill all fields');
             return;
         }
 
-        router.post('/admin/noise-data/add', {
-            device_id: selectedDevice,
-            ...newNoiseData,
-        }, {
-            onSuccess: () => {
+        setLoadingAction(true);
+        try {
+            const response = await fetch('/admin/noise-data/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    device_id: selectedDevice,
+                    period: selectedPeriod,
+                    date: selectedDate,
+                    measured_at: newNoiseData.measured_at,
+                    noise_db: parseFloat(newNoiseData.noise_db),
+                    temperature: parseFloat(newNoiseData.temperature),
+                    humidity: parseFloat(newNoiseData.humidity),
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
                 setShowAddModal(false);
                 setNewNoiseData({ measured_at: '', noise_db: '', temperature: '', humidity: '' });
-                loadNoiseDataByPeriod();
-            },
-        });
+                showToast('success', result.message ?? 'Data added successfully');
+                await refreshNoiseData();
+            } else {
+                showToast('error', result.message ?? 'Failed to add data');
+            }
+        } catch (error) {
+            console.error('Failed to add noise data:', error);
+            showToast('error', 'Failed to add data');
+        } finally {
+            setLoadingAction(false);
+        }
     };
 
-    const handleUpdateNoiseData = (data: NoiseData) => {
-        router.put('/admin/noise-data/update', {
-            id: data.id,
-            noise_db: data.noise_db,
-            temperature: data.temperature,
-            humidity: data.humidity,
-        }, {
-            onSuccess: () => {
+    const handleUpdateNoiseData = async (data: NoiseData) => {
+        setLoadingAction(true);
+        try {
+            const response = await fetch('/admin/noise-data/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: data.id,
+                    noise_db: data.noise_db,
+                    temperature: data.temperature,
+                    humidity: data.humidity,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
                 setEditingNoiseData(null);
-                loadNoiseDataByPeriod();
-            },
-        });
+                showToast('success', result.message ?? 'Data updated successfully');
+                await refreshNoiseData();
+            } else {
+                showToast('error', result.message ?? 'Failed to update data');
+            }
+        } catch (error) {
+            console.error('Failed to update noise data:', error);
+            showToast('error', 'Failed to update data');
+        } finally {
+            setLoadingAction(false);
+        }
     };
 
-    const handleDeleteNoiseData = (id: number) => {
-        if (!confirm('Are you sure you want to delete this data?')) {
+    const handleDeleteNoiseData = async (id: number) => {
+        if (!confirm('Hapus data ini secara permanen? Telemetry di menit yang sama juga akan dihapus.')) {
             return;
         }
 
-        router.delete('/admin/noise-data/delete', {
-            data: { id },
-            onSuccess: () => {
-                loadNoiseDataByPeriod();
-            },
+        setLoadingAction(true);
+        try {
+            const response = await fetch('/admin/noise-data/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ id }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('success', result.message ?? 'Slot reset successfully');
+                await refreshNoiseData();
+            } else {
+                showToast('error', result.message ?? 'Failed to reset slot');
+            }
+        } catch (error) {
+            console.error('Failed to delete noise data:', error);
+            showToast('error', 'Failed to reset slot');
+        } finally {
+            setLoadingAction(false);
+        }
+    };
+
+    // Build default measured_at for add modal based on selected date + period start
+    const periodStartTimes: Record<string, string> = {
+        L1: '08:00', L2: '09:00', L3: '10:00', L4: '11:00',
+        L5: '13:00', L6: '14:00', L7: '15:00', L8: '16:00',
+    };
+
+    const periodEndTimes: Record<string, string> = {
+        L1: '08:59', L2: '09:59', L3: '10:59', L4: '11:59',
+        L5: '13:59', L6: '14:59', L7: '15:59', L8: '16:59',
+    };
+
+    const periodLabels: Record<string, string> = {
+        L1: '08:00–09:00', L2: '09:00–10:00', L3: '10:00–11:00', L4: '11:00–12:00',
+        L5: '13:00–14:00', L6: '14:00–15:00', L7: '15:00–16:00', L8: '16:00–17:00',
+    };
+
+    const openAddModal = () => {
+        const defaultTime = periodStartTimes[selectedPeriod] ?? '08:00';
+        setNewNoiseData({
+            measured_at: `${selectedDate}T${defaultTime}`,
+            noise_db: '',
+            temperature: '',
+            humidity: '',
         });
+        setShowAddModal(true);
     };
 
     return (
@@ -192,6 +337,19 @@ export default function AdminDashboard({ stats }: Props) {
                     <h1 className="text-2xl font-bold">Admin Dashboard</h1>
                     <p className="text-muted-foreground">Manage and recalculate system data</p>
                 </div>
+
+                {/* Toast Notification */}
+                {toast && (
+                    <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2 rounded-lg px-4 py-3 text-sm text-white shadow-lg transition-all ${
+                        toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+                    }`}>
+                        {toast.type === 'success'
+                            ? <CheckCircle className="h-4 w-4 shrink-0" />
+                            : <XCircle className="h-4 w-4 shrink-0" />
+                        }
+                        <span>{toast.message}</span>
+                    </div>
+                )}
 
                 {/* Quick Links */}
                 <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
@@ -471,15 +629,22 @@ export default function AdminDashboard({ stats }: Props) {
                         <div className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white p-6 dark:bg-gray-800">
                             <div className="mb-4 flex items-center justify-between">
                                 <h2 className="text-xl font-bold">
-                                    Noise Data - {selectedPeriod} ({selectedDate})
+                                    Noise Data — {selectedPeriod} ({selectedDate}) · Device #{selectedDevice}
                                 </h2>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => setShowAddModal(true)}
-                                        className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+                                        onClick={openAddModal}
+                                        className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 flex items-center gap-1"
                                     >
-                                        <Plus className="inline h-4 w-4 mr-1" />
+                                        <Plus className="h-4 w-4" />
                                         Add Data
+                                    </button>
+                                    <button
+                                        onClick={refreshNoiseData}
+                                        className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 flex items-center gap-1"
+                                    >
+                                        <RefreshCw className="h-4 w-4" />
+                                        Refresh
                                     </button>
                                     <button
                                         onClick={() => setShowNoiseDataModal(false)}
@@ -515,7 +680,7 @@ export default function AdminDashboard({ stats }: Props) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {noiseDataList.map((data, index) => (
+                                        {noiseDataList.map((data) => (
                                             <tr key={data.id} className="border-b hover:bg-muted/30">
                                                 {editingNoiseData?.id === data.id ? (
                                                     <>
@@ -566,9 +731,10 @@ export default function AdminDashboard({ stats }: Props) {
                                                         <td className="px-3 py-2 text-center">
                                                             <button
                                                                 onClick={() => handleUpdateNoiseData(editingNoiseData)}
-                                                                className="mr-2 text-green-600 hover:text-green-800"
+                                                                disabled={loadingAction}
+                                                                className="mr-2 text-green-600 hover:text-green-800 disabled:opacity-50"
                                                             >
-                                                                Save
+                                                                {loadingAction ? '...' : 'Save'}
                                                             </button>
                                                             <button
                                                                 onClick={() => setEditingNoiseData(null)}
@@ -619,7 +785,8 @@ export default function AdminDashboard({ stats }: Props) {
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteNoiseData(data.id)}
-                                                                className="text-red-600 hover:text-red-800"
+                                                                disabled={loadingAction}
+                                                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
                                                                 title="Reset slot (filled copy)"
                                                             >
                                                                 <Trash2 className="inline h-4 w-4" />
@@ -629,6 +796,13 @@ export default function AdminDashboard({ stats }: Props) {
                                                 )}
                                             </tr>
                                         ))}
+                                        {noiseDataList.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                                                    No data found for this period
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -638,18 +812,26 @@ export default function AdminDashboard({ stats }: Props) {
 
                 {/* Add Noise Data Modal */}
                 {showAddModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
                         <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-800">
-                            <h2 className="mb-4 text-xl font-bold">Add Noise Data</h2>
+                            <h2 className="mb-1 text-xl font-bold">Add Noise Data</h2>
+                            <p className="mb-4 text-sm text-muted-foreground">
+                                Period: <strong>{selectedPeriod}</strong> · Date: <strong>{selectedDate}</strong> · Device: <strong>#{selectedDevice}</strong>
+                            </p>
                             <div className="space-y-4">
                                 <div>
                                     <label className="text-sm font-medium">Timestamp</label>
                                     <input
                                         type="datetime-local"
                                         value={newNoiseData.measured_at}
+                                        min={`${selectedDate}T${periodStartTimes[selectedPeriod]}`}
+                                        max={`${selectedDate}T${periodEndTimes[selectedPeriod]}`}
                                         onChange={(e) => setNewNoiseData({ ...newNoiseData, measured_at: e.target.value })}
                                         className="mt-1 w-full rounded-md border p-2"
                                     />
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Harus dalam rentang periode {selectedPeriod}: <strong>{periodLabels[selectedPeriod]}</strong>
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium">Noise (dB)</label>
@@ -687,16 +869,18 @@ export default function AdminDashboard({ stats }: Props) {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleAddNoiseData}
-                                        className="flex-1 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                                        disabled={loadingAction}
+                                        className="flex-1 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
                                     >
-                                        Add Data
+                                        {loadingAction ? 'Saving...' : 'Add Data'}
                                     </button>
                                     <button
                                         onClick={() => {
                                             setShowAddModal(false);
                                             setNewNoiseData({ measured_at: '', noise_db: '', temperature: '', humidity: '' });
                                         }}
-                                        className="flex-1 rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
+                                        disabled={loadingAction}
+                                        className="flex-1 rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700 disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
