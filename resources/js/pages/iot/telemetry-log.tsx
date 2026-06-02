@@ -30,8 +30,9 @@ function formatDateTime(dateString: string): string {
 }
 
 // Function to calculate THI (Temperature Humidity Index)
+// THI = 0.8 × Ta + (RH × Ta) / 500
 function calculateTHI(temperature: number, humidity: number): number {
-    return temperature - (0.55 - 0.0055 * humidity) * (temperature - 14.5);
+    return 0.8 * temperature + (humidity * temperature) / 500;
 }
 
 export default function TelemetryLog({ device, telemetries, filters }: Props) {
