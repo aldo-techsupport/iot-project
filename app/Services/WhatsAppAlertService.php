@@ -130,7 +130,7 @@ class WhatsAppAlertService
     {
         // Priority order: check most critical conditions first
         
-        // Type 5: dB > 100 & THI > 29 (KONDISI DARURAT)
+        // Type 5: dB > 100 & THI > 29 °C (KONDISI DARURAT)
         if ($noiseDb > 100 && $thi > 29) {
             return 5;
         }
@@ -140,7 +140,7 @@ class WhatsAppAlertService
             return 4;
         }
         
-        // Type 3: dB > 85 & THI > 29 (PERINGATAN KRITIS)
+        // Type 3: dB > 85 & THI > 29 °C (PERINGATAN KRITIS)
         if ($noiseDb > 85 && $thi > 29) {
             return 3;
         }
@@ -150,7 +150,7 @@ class WhatsAppAlertService
             return 2;
         }
         
-        // Type 1: THI > 29 (PERINGATAN SUHU PANAS)
+        // Type 1: THI > 29 °C (PERINGATAN SUHU PANAS)
         if ($thi > 29) {
             return 1;
         }
@@ -175,9 +175,9 @@ class WhatsAppAlertService
         } else {
             switch ($alertType) {
                 case 1:
-                    $message = "1️⃣ *THI > 29*\n\n";
+                    $message = "1️⃣ *THI > 29 °C*\n\n";
                     $message .= "⚠️ *PERINGATAN SUHU PANAS!*\n\n";
-                    $message .= "Nilai THI terdeteksi lebih dari 29.\n";
+                    $message .= "Nilai THI terdeteksi lebih dari 29 °C.\n";
                     $message .= "Kondisi lingkungan sudah masuk kategori panas dan berpotensi menyebabkan stres panas.\n\n";
                     $message .= "Segera lakukan pengecekan ventilasi atau pendinginan.\n\n";
                     break;
@@ -191,11 +191,11 @@ class WhatsAppAlertService
                     break;
 
                 case 3:
-                    $message = "3️⃣ *dB(A) > 85 & THI > 29*\n\n";
+                    $message = "3️⃣ *dB(A) > 85 & THI > 29 °C*\n\n";
                     $message .= "🚨 *PERINGATAN KRITIS!*\n\n";
                     $message .= "Kebisingan > 85 dB(A)\n";
                     $message .= "*dan*\n";
-                    $message .= "THI > 29 (Kondisi Panas)\n\n";
+                    $message .= "THI > 29 °C (Kondisi Panas)\n\n";
                     $message .= "Lingkungan dalam kondisi tidak nyaman dan berisiko.\n\n";
                     $message .= "Segera lakukan tindakan pengendalian suhu dan kebisingan.\n\n";
                     break;
@@ -209,11 +209,11 @@ class WhatsAppAlertService
                     break;
 
                 case 5:
-                    $message = "5️⃣ *dB(A) > 100 & THI > 29*\n\n";
+                    $message = "5️⃣ *dB(A) > 100 & THI > 29 °C*\n\n";
                     $message .= "🚨🚨 *KONDISI DARURAT!*\n\n";
                     $message .= "Kebisingan > 100 dB(A)\n";
                     $message .= "*dan*\n";
-                    $message .= "THI > 29 (Suhu Ekstrem)\n\n";
+                    $message .= "THI > 29 °C (Suhu Ekstrem)\n\n";
                     $message .= "Lingkungan sangat berbahaya dan tidak aman.\n\n";
                     $message .= "Segera lakukan evakuasi atau tindakan pengamanan.\n\n";
                     break;

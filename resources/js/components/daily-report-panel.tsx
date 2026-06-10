@@ -481,7 +481,6 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                         <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
                             <li>• Maximum permissible exposure: 85 dBA for 8 hours</li>
                             <li>• Ls calculation based on 8-hour work day</li>
-                            <li>• Each period (L1-L4) represents 2 hours of measurement</li>
                         </ul>
                     </div>
                 </CardContent>
