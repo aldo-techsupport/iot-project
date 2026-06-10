@@ -898,7 +898,12 @@ class DashboardController extends Controller
             ->whereDate('calculation_date', $date)
             ->first();
         
-        if (!$summary) {
+        // If summary exists but ls_value is NULL while is_valid=true, the record is in a broken state.
+        // This can happen when a previous INVALID run reset the values.
+        // Try to recalculate if all 8 periods are available.
+        $needsRecalculation = !$summary || ($summary && $summary->is_valid && $summary->ls_value === null);
+
+        if ($needsRecalculation) {
             // Try to calculate if all periods are available
             $calculations = NoiseCalculation::where('device_id', $deviceId)
                 ->whereDate('calculation_date', $date)
@@ -914,7 +919,10 @@ class DashboardController extends Controller
                 $responseData = $response->getData(true);
                 
                 if ($responseData['success']) {
-                    $summary = $responseData['data'];
+                    // Re-fetch from DB to get the latest saved data
+                    $summary = NoiseDailySummary::where('device_id', $deviceId)
+                        ->whereDate('calculation_date', $date)
+                        ->first();
                 }
             }
         }

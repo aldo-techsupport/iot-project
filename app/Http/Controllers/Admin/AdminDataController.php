@@ -46,11 +46,7 @@ class AdminDataController extends Controller
         ]);
 
         try {
-            Artisan::call('noise:recalculate-period', [
-                'device_id' => $validated['device_id'],
-                'date' => $validated['date'],
-                'period' => $validated['period'],
-            ]);
+            $this->triggerRecalculate((int) $validated['device_id'], $validated['period'], $validated['date']);
 
             return back()->with('success', 'Noise period recalculated successfully');
         } catch (\Exception $e) {
@@ -69,10 +65,8 @@ class AdminDataController extends Controller
         ]);
 
         try {
-            Artisan::call('noise:recalculate-daily', [
-                'device_id' => $validated['device_id'],
-                'date' => $validated['date'],
-            ]);
+            // Directly recalculate daily summary validity and values
+            $this->updateDailySummaryValidity((int) $validated['device_id'], $validated['date']);
 
             return back()->with('success', 'Daily summary recalculated successfully');
         } catch (\Exception $e) {
@@ -521,6 +515,12 @@ class AdminDataController extends Controller
                     'is_valid'        => true,
                     'invalid_reason'  => null,
                     'invalid_periods' => null,
+                    // Explicitly reset calculated values to NULL so we don't leave
+                    // stale data when not all 8 periods are present yet.
+                    'ls_value'        => null,
+                    'twa_value'       => null,
+                    'dnd_value'       => null,
+                    'allowable_time'  => null,
                 ]);
             return;
         }
