@@ -439,20 +439,22 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     T (Waktu Maksimal yang Diizinkan)
                                 </p>
                                 <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">
-                                    {summary.allowable_time.toLocaleString('id-ID', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })} jam
+                                    {summary.allowable_time != null
+                                        ? summary.allowable_time.toLocaleString('id-ID', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })
+                                        : 'N/A'} jam
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-2">
                                     Formula: T = 8 / 2^((L-85)/3)
                                 </p>
                             </div>
                             <Badge
-                                variant={summary.allowable_time < 8 ? 'destructive' : 'default'}
+                                variant={summary.allowable_time != null && summary.allowable_time < 8 ? 'destructive' : 'default'}
                                 className="text-lg px-4 py-2"
                             >
-                                {summary.allowable_time < 8 ? 'Reduced Time' : summary.allowable_time > 24 ? 'Very Safe' : 'Full Time'}
+                                {summary.allowable_time == null ? 'N/A' : summary.allowable_time < 8 ? 'Reduced Time' : summary.allowable_time > 24 ? 'Very Safe' : 'Full Time'}
                             </Badge>
                         </div>
                         <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
@@ -461,18 +463,20 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             </p>
                             <p className="text-sm text-amber-700 dark:text-amber-300">
                                 Waktu maksimal yang diizinkan: <span className="font-bold">
-                                    {summary.allowable_time.toLocaleString('id-ID', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })} jam
+                                    {summary.allowable_time != null
+                                        ? summary.allowable_time.toLocaleString('id-ID', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })
+                                        : 'N/A'} jam
                                 </span>
                             </p>
-                            {summary.allowable_time < 8 && (
+                            {summary.allowable_time != null && summary.allowable_time < 8 && (
                                 <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-medium">
                                     ⚠️ Waktu paparan melebihi batas yang diizinkan
                                 </p>
                             )}
-                            {summary.allowable_time >= 8 && summary.allowable_time <= 24 && (
+                            {summary.allowable_time != null && summary.allowable_time >= 8 && summary.allowable_time <= 24 && (
                                 <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
                                     ✓ Dalam batas aman
                                 </p>

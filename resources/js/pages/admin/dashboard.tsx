@@ -318,10 +318,40 @@ export default function AdminDashboard({ stats }: Props) {
         L5: '13:00–14:00', L6: '14:00–15:00', L7: '15:00–16:00', L8: '16:00–17:00',
     };
 
+    // Compute empty (missing) minute slots for the currently loaded period.
+    // A period has 60 slots (slot_index 0..59) corresponding to minutes after the period start.
+    const availableSlots = (() => {
+        const startHHMM = periodStartTimes[selectedPeriod] ?? '08:00';
+        const [startH, startM] = startHHMM.split(':').map(Number);
+
+        const usedSlots = new Set(noiseDataList.map((d) => d.slot_index));
+
+        const slots: { slot_index: number; time: string; measured_at: string }[] = [];
+        for (let i = 0; i < 60; i++) {
+            if (usedSlots.has(i)) continue;
+
+            const totalMinutes = startH * 60 + startM + i;
+            const hh = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+            const mm = String(totalMinutes % 60).padStart(2, '0');
+
+            slots.push({
+                slot_index: i,
+                time: `${hh}:${mm}`,
+                measured_at: `${selectedDate}T${hh}:${mm}`,
+            });
+        }
+        return slots;
+    })();
+
     const openAddModal = () => {
-        const defaultTime = periodStartTimes[selectedPeriod] ?? '08:00';
+        // Default to the first empty slot, fallback to period start if none free
+        const firstEmpty = availableSlots[0];
+        const defaultMeasuredAt = firstEmpty
+            ? firstEmpty.measured_at
+            : `${selectedDate}T${periodStartTimes[selectedPeriod] ?? '08:00'}`;
+
         setNewNoiseData({
-            measured_at: `${selectedDate}T${defaultTime}`,
+            measured_at: defaultMeasuredAt,
             noise_db: '',
             temperature: '',
             humidity: '',
@@ -820,17 +850,31 @@ export default function AdminDashboard({ stats }: Props) {
                             </p>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm font-medium">Timestamp</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={newNoiseData.measured_at}
-                                        min={`${selectedDate}T${periodStartTimes[selectedPeriod]}`}
-                                        max={`${selectedDate}T${periodEndTimes[selectedPeriod]}`}
-                                        onChange={(e) => setNewNoiseData({ ...newNoiseData, measured_at: e.target.value })}
-                                        className="mt-1 w-full rounded-md border p-2"
-                                    />
+                                    <label className="text-sm font-medium">
+                                        Pilih Menit Kosong{' '}
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            ({availableSlots.length} slot tersedia dari 60)
+                                        </span>
+                                    </label>
+                                    {availableSlots.length > 0 ? (
+                                        <select
+                                            value={newNoiseData.measured_at}
+                                            onChange={(e) => setNewNoiseData({ ...newNoiseData, measured_at: e.target.value })}
+                                            className="mt-1 w-full rounded-md border p-2 font-mono"
+                                        >
+                                            {availableSlots.map((slot) => (
+                                                <option key={slot.slot_index} value={slot.measured_at}>
+                                                    Slot {String(slot.slot_index).padStart(2, '0')} — {slot.time}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="mt-1 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300">
+                                            Semua 60 slot di periode {selectedPeriod} sudah terisi. Tutup modal lalu edit slot yang ada.
+                                        </div>
+                                    )}
                                     <p className="mt-1 text-xs text-muted-foreground">
-                                        Harus dalam rentang periode {selectedPeriod}: <strong>{periodLabels[selectedPeriod]}</strong>
+                                        Periode {selectedPeriod}: <strong>{periodLabels[selectedPeriod]}</strong>
                                     </p>
                                 </div>
                                 <div>
@@ -869,7 +913,7 @@ export default function AdminDashboard({ stats }: Props) {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleAddNoiseData}
-                                        disabled={loadingAction}
+                                        disabled={loadingAction || availableSlots.length === 0}
                                         className="flex-1 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
                                     >
                                         {loadingAction ? 'Saving...' : 'Add Data'}
