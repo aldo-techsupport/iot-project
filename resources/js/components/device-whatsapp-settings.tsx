@@ -288,10 +288,10 @@ export default function DeviceWhatsAppSettings({ device }: Props) {
                                 1️⃣
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">THI &gt; 29</p>
+                                <p className="font-medium">THI &gt; 29⁰C</p>
                                 <p className="text-sm font-semibold text-yellow-600">⚠️ PERINGATAN SUHU PANAS!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Nilai THI terdeteksi lebih dari 29. Kondisi lingkungan sudah masuk kategori panas dan berpotensi menyebabkan stres panas. Segera lakukan pengecekan ventilasi atau pendinginan.
+                                    Nilai THI terdeteksi lebih dari 29⁰C. Kondisi lingkungan sudah masuk kategori panas dan berpotensi menyebabkan stres panas. Segera lakukan pengecekan ventilasi atau pendinginan.
                                 </p>
                             </div>
                         </div>
