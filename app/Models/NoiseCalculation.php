@@ -27,6 +27,8 @@ class NoiseCalculation extends Model
         'leq_value',
         'frequency_distribution',
         'thi_average',
+        'avg_temperature',
+        'avg_humidity',
     ];
 
     protected $casts = [
@@ -44,6 +46,8 @@ class NoiseCalculation extends Model
         'leq_value' => 'float',
         'frequency_distribution' => 'array',
         'thi_average' => 'float',
+        'avg_temperature' => 'float',
+        'avg_humidity' => 'float',
     ];
 
     /**
@@ -91,6 +95,6 @@ class NoiseCalculation extends Model
      */
     public function getFormattedLeqAttribute(): string
     {
-        return $this->leq_value ? number_format($this->leq_value, 2) . ' dB' : 'N/A';
+        return $this->leq_value ? number_format($this->leq_value, 2).' dB' : 'N/A';
     }
 }

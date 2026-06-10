@@ -31,6 +31,8 @@ interface NoiseCalculation {
     average_value: number;
     leq_value: number;
     thi_average: number;
+    avg_temperature: number | null;
+    avg_humidity: number | null;
     data_count: number;
     is_valid: boolean;
     invalid_reason: string | null;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowDown, ArrowUp, ThermometerSun, Info, Clock, Database, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ThermometerSun, Thermometer, Droplets, Info, Clock, Database, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming utils exists, if not I will standard use className
 
 interface NoiseStatisticsPanelProps {
@@ -10,6 +10,8 @@ interface NoiseStatisticsPanelProps {
         average_value: number;
         leq_value: number;
         thi_average: number;
+        avg_temperature?: number | null;
+        avg_humidity?: number | null;
         data_count: number;
         is_valid?: boolean;
         invalid_reason?: string | null;
@@ -21,8 +23,8 @@ interface NoiseStatisticsPanelProps {
 export default function NoiseStatisticsPanel({ calculation, loading }: NoiseStatisticsPanelProps) {
     if (loading) {
         return (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
-                {[1, 2, 3].map((i) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[1, 2, 3, 4, 5].map((i) => (
                     <Card key={i} className="animate-pulse">
                         <CardContent className="flex flex-col items-center justify-center p-6 h-32">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -67,10 +69,26 @@ export default function NoiseStatisticsPanel({ calculation, loading }: NoiseStat
         {
             label: 'THI',
             value: calculation.thi_average,
-            unit: '',
+            unit: '°C',
             icon: ThermometerSun,
             color: 'text-orange-500',
             bg: 'bg-orange-100 dark:bg-orange-900/20',
+        },
+        {
+            label: 'Rata² Suhu',
+            value: calculation.avg_temperature ?? null,
+            unit: '°C',
+            icon: Thermometer,
+            color: 'text-blue-500',
+            bg: 'bg-blue-100 dark:bg-blue-900/20',
+        },
+        {
+            label: 'Rata² Kelembaban',
+            value: calculation.avg_humidity ?? null,
+            unit: '%',
+            icon: Droplets,
+            color: 'text-cyan-500',
+            bg: 'bg-cyan-100 dark:bg-cyan-900/20',
         },
     ];
 
@@ -90,7 +108,7 @@ export default function NoiseStatisticsPanel({ calculation, loading }: NoiseStat
                     </div>
                 </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {stats.map((stat) => (
                     <Card key={stat.label}>
                         <CardContent className="flex flex-col items-center justify-center p-4 text-center">

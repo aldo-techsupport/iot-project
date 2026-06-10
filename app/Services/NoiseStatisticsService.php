@@ -4,7 +4,6 @@ namespace App\Services;
 
 class NoiseStatisticsService
 {
- 
     public function calculateBasicStats(array $noiseLevels): array
     {
         if (empty($noiseLevels)) {
@@ -28,20 +27,19 @@ class NoiseStatisticsService
         return 1 + (3.3 * log10($dataCount));
     }
 
-
     public function calculateClassInterval(float $range, float $classCount): float
     {
         if ($classCount == 0) {
             return 0;
         }
+
         return $range / $classCount;
     }
 
-  
     public function buildFrequencyDistribution(
-        array $noiseLevels, 
-        float $min, 
-        float $interval, 
+        array $noiseLevels,
+        float $min,
+        float $interval,
         float $classCount
     ): array {
         $distribution = [];
@@ -65,11 +63,11 @@ class NoiseStatisticsService
         foreach ($noiseLevels as $level) {
             foreach ($distribution as $key => $interval) {
                 // Check if level falls in this interval
-                $isInInterval = $level >= $interval['interval_min'] && 
-                               ($key === $classes - 1 
-                                   ? $level <= $interval['interval_max'] 
+                $isInInterval = $level >= $interval['interval_min'] &&
+                               ($key === $classes - 1
+                                   ? $level <= $interval['interval_max']
                                    : $level < $interval['interval_max']);
-                
+
                 if ($isInInterval) {
                     $distribution[$key]['frequency']++;
                     break;
@@ -79,7 +77,6 @@ class NoiseStatisticsService
 
         return $distribution;
     }
-
 
     public function calculateLeq(array $frequencyDistribution, int $totalData): float
     {
@@ -103,7 +100,6 @@ class NoiseStatisticsService
         return round($leq, 2);
     }
 
-
     public function calculateTHI(float $temperature, float $humidity): float
     {
         return 0.8 * $temperature + ($humidity * $temperature) / 500;
@@ -111,8 +107,8 @@ class NoiseStatisticsService
 
     /**
      * Process complete calculation for a period
-     * 
-     * @param array $rawData Array of data with 'noise_level', 'temperature', 'humidity'
+     *
+     * @param  array  $rawData  Array of data with 'noise_level', 'temperature', 'humidity'
      * @return array Complete calculation results
      */
     public function processCompleteCalculation(array $rawData): array
@@ -148,7 +144,9 @@ class NoiseStatisticsService
                 $thiValues[] = $this->calculateTHI($data['temperature'], $data['humidity']);
             }
         }
-        $thiAverage = !empty($thiValues) ? array_sum($thiValues) / count($thiValues) : null;
+        $thiAverage = ! empty($thiValues) ? array_sum($thiValues) / count($thiValues) : null;
+        $avgTemperature = ! empty($temperatures) ? array_sum($temperatures) / count($temperatures) : null;
+        $avgHumidity = ! empty($humidities) ? array_sum($humidities) / count($humidities) : null;
 
         return [
             'data_count' => count($noiseLevels),
@@ -161,45 +159,47 @@ class NoiseStatisticsService
             'frequency_distribution' => $frequencyDistribution,
             'leq_value' => $leq,
             'thi_average' => $thiAverage ? round($thiAverage, 2) : null,
+            'avg_temperature' => $avgTemperature ? round($avgTemperature, 2) : null,
+            'avg_humidity' => $avgHumidity ? round($avgHumidity, 2) : null,
         ];
     }
 
     /**
      * Calculate Ls (Leq Siang - Daytime Average Noise Level)
      * Formula: Ls = 10 × log10(1/N × Σ(Ti × 10^(0.1×Li)))
-     * 
+     *
      * N = 60 (1 data per minute for 1 hour period)
-     * 
-     * @param array $periodData Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 1, 'data_count' => 60]
+     *
+     * @param  array  $periodData  Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 1, 'data_count' => 60]
      * @return float Ls value in dB
      */
     public function calculateLs(array $periodData): float
     {
         $sum = 0;
         $N = 60; // Fixed: 60 data points (1 per minute for 1 hour)
-        
+
         foreach ($periodData as $data) {
             $Ti = $data['duration_hours'];
             $Li = $data['leq'];
-            
+
             // Calculate: Ti × 10^(0.1×Li)
             $sum += $Ti * pow(10, 0.1 * $Li);
         }
-        
+
         // Calculate: 10 × log10(1/N × sum) where N = 60
         $ls = 10 * log10((1 / $N) * $sum);
-        
+
         return round($ls, 2);
     }
 
     /**
      * Calculate allowable exposure time using NIOSH formula
      * Formula: T = 480 / 2^((L-85)/3)
-     * 
+     *
      * Note: Formula menggunakan 480 menit sebagai reference time untuk 85 dBA
      *       Hasil dalam menit, kemudian dikonversi ke jam
-     * 
-     * @param float $noiseLevel Noise level in dB
+     *
+     * @param  float  $noiseLevel  Noise level in dB
      * @return float Allowable exposure time in hours
      */
     public function calculateAllowableTime(float $noiseLevel): float
@@ -209,24 +209,24 @@ class NoiseStatisticsService
         // 3 = exchange rate (every 3 dB increase, time is halved)
         $exponent = ($noiseLevel - 85) / 3;
         $allowableTimeMinutes = 480 / pow(2, $exponent);
-        
+
         // Convert to hours
         $allowableTimeHours = $allowableTimeMinutes / 60;
-        
+
         return $allowableTimeHours;
     }
 
     /**
      * Calculate DND (Daily Noise Dose) using NIOSH method
      * Formula: D(%) = (C/T) × 100%
-     * 
+     *
      * Following thesis calculation method:
      * - C = 480 minutes (8 hours work day)
      * - T = allowable time in minutes (from formula above)
      * - Result matches reference calculation (755% for Ls=93.78 dB)
-     * 
-     * @param float $noiseLevel Average noise level (Ls) in dB
-     * @param float $exposureTime Actual exposure time in hours (default: 8)
+     *
+     * @param  float  $noiseLevel  Average noise level (Ls) in dB
+     * @param  float  $exposureTime  Actual exposure time in hours (default: 8)
      * @return float DND value in percentage
      */
     public function calculateDND(float $noiseLevel, float $exposureTime = 8): float
@@ -235,23 +235,23 @@ class NoiseStatisticsService
         // T = 480 / 2^((L-85)/3)
         $exponent = ($noiseLevel - 85) / 3;
         $allowableTimeMinutes = 480 / pow(2, $exponent);
-        
+
         // Convert exposure time to minutes
         $exposureTimeMinutes = $exposureTime * 60;
-        
+
         // Calculate DND: D(%) = (C/T) × 100%
         // C = actual exposure time in minutes
         // T = allowable exposure time in minutes
         $dnd = ($exposureTimeMinutes / $allowableTimeMinutes) * 100;
-        
+
         return round($dnd, 2);
     }
 
     /**
      * Calculate TWA (Time Weighted Average)
      * Formula: TWA = 10 × log(DND/100) + 85
-     * 
-     * @param float $dnd Dosis harian dalam persen (%)
+     *
+     * @param  float  $dnd  Dosis harian dalam persen (%)
      * @return float TWA value in dBA
      */
     public function calculateTWA(float $dnd): float
@@ -259,9 +259,9 @@ class NoiseStatisticsService
         if ($dnd <= 0) {
             return 0;
         }
-        
+
         $twa = 10 * log10($dnd / 100) + 85;
-        
+
         return round($twa, 2);
     }
 }
