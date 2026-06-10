@@ -484,34 +484,125 @@ class AdminDataController extends Controller
 
     /**
      * Update is_valid pada NoiseDailySummary berdasarkan kalkulasi periode terkini.
+     * Jika semua periode valid, hitung ulang ls_value, twa_value, dnd_value, dll.
      */
     private function updateDailySummaryValidity(int $deviceId, string $date): void
     {
-        $invalidPeriods = \App\Models\NoiseCalculation::where('device_id', $deviceId)
+        $calculations = \App\Models\NoiseCalculation::where('device_id', $deviceId)
             ->whereDate('calculation_date', $date)
-            ->where('is_valid', false)
-            ->pluck('period')
-            ->toArray();
+            ->get()
+            ->keyBy('period');
 
-        $summary = \App\Models\NoiseDailySummary::where('device_id', $deviceId)
-            ->whereDate('calculation_date', $date)
-            ->first();
-
-        if (!$summary) return;
+        $invalidPeriods = $calculations->filter(fn($c) => !$c->is_valid)->keys()->toArray();
 
         if (!empty($invalidPeriods)) {
-            $summary->update([
-                'is_valid'        => false,
-                'invalid_reason'  => 'INVALID DATA: periode ' . implode(', ', $invalidPeriods)
-                    . ' tidak lengkap (data < 60 titik).',
-                'invalid_periods' => $invalidPeriods,
-            ]);
-        } else {
-            $summary->update([
-                'is_valid'        => true,
-                'invalid_reason'  => null,
-                'invalid_periods' => null,
-            ]);
+            \App\Models\NoiseDailySummary::updateOrCreate(
+                ['device_id' => $deviceId, 'calculation_date' => $date],
+                [
+                    'is_valid'        => false,
+                    'invalid_reason'  => 'INVALID DATA: periode ' . implode(', ', $invalidPeriods)
+                        . ' tidak lengkap (data < 60 titik).',
+                    'invalid_periods' => $invalidPeriods,
+                    // Reset calculated values so stale data is not shown
+                    'ls_value'        => null,
+                    'twa_value'       => null,
+                    'dnd_value'       => null,
+                    'allowable_time'  => null,
+                ]
+            );
+            return;
         }
+
+        // All periods are valid — but only recalculate if all 8 periods exist
+        if ($calculations->count() < 8) {
+            \App\Models\NoiseDailySummary::where('device_id', $deviceId)
+                ->whereDate('calculation_date', $date)
+                ->update([
+                    'is_valid'        => true,
+                    'invalid_reason'  => null,
+                    'invalid_periods' => null,
+                ]);
+            return;
+        }
+
+        // Full recalculation of daily summary values
+        $statsService = new \App\Services\NoiseStatisticsService();
+
+        $periodData = [];
+        foreach (['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'] as $p) {
+            $calc = $calculations->get($p);
+            $periodData[] = [
+                'period'         => $p,
+                'leq'            => $calc ? (float) $calc->leq_value : 0,
+                'duration_hours' => 1,
+                'data_count'     => $calc ? (int) $calc->data_count : 0,
+            ];
+        }
+
+        $ls            = $statsService->calculateLs($periodData);
+        $allowableTime = $statsService->calculateAllowableTime($ls);
+        $dnd           = $statsService->calculateDND($ls, 8);
+        $twa           = $statsService->calculateTWA($dnd);
+
+        // Daily THI average from period calculations
+        $thiValues = [];
+        foreach (['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'] as $p) {
+            $calc = $calculations->get($p);
+            if ($calc && $calc->thi_average !== null) {
+                $thiValues[] = (float) $calc->thi_average;
+            }
+        }
+        $thiAvgDaily = !empty($thiValues) ? round(array_sum($thiValues) / count($thiValues), 2) : null;
+
+        // Daily temperature & humidity average from telemetry
+        $tempAvg = \App\Models\Telemetry::where('device_id', $deviceId)
+            ->whereDate('measured_at', $date)
+            ->whereNotNull('temperature')
+            ->where(function ($q) {
+                $q->whereRaw('HOUR(measured_at) BETWEEN 8 AND 11')
+                  ->orWhereRaw('HOUR(measured_at) BETWEEN 13 AND 16');
+            })
+            ->avg('temperature');
+
+        $humAvg = \App\Models\Telemetry::where('device_id', $deviceId)
+            ->whereDate('measured_at', $date)
+            ->whereNotNull('humidity')
+            ->where(function ($q) {
+                $q->whereRaw('HOUR(measured_at) BETWEEN 8 AND 11')
+                  ->orWhereRaw('HOUR(measured_at) BETWEEN 13 AND 16');
+            })
+            ->avg('humidity');
+
+        \App\Models\NoiseDailySummary::updateOrCreate(
+            ['device_id' => $deviceId, 'calculation_date' => $date],
+            [
+                'is_valid'              => true,
+                'invalid_reason'        => null,
+                'invalid_periods'       => null,
+                'ls_value'              => $ls,
+                'twa_value'             => $twa,
+                'dnd_value'             => $dnd,
+                'allowable_time'        => $allowableTime,
+                'thi_avg_daily'         => $thiAvgDaily,
+                'temperature_avg_daily' => $tempAvg !== null ? round((float) $tempAvg, 2) : null,
+                'humidity_avg_daily'    => $humAvg !== null ? round((float) $humAvg, 2) : null,
+                'l1_leq'                => $calculations->get('L1')?->leq_value,
+                'l1_thi_avg'            => $calculations->get('L1')?->thi_average,
+                'l2_leq'                => $calculations->get('L2')?->leq_value,
+                'l2_thi_avg'            => $calculations->get('L2')?->thi_average,
+                'l3_leq'                => $calculations->get('L3')?->leq_value,
+                'l3_thi_avg'            => $calculations->get('L3')?->thi_average,
+                'l4_leq'                => $calculations->get('L4')?->leq_value,
+                'l4_thi_avg'            => $calculations->get('L4')?->thi_average,
+                'l5_leq'                => $calculations->get('L5')?->leq_value,
+                'l5_thi_avg'            => $calculations->get('L5')?->thi_average,
+                'l6_leq'                => $calculations->get('L6')?->leq_value,
+                'l6_thi_avg'            => $calculations->get('L6')?->thi_average,
+                'l7_leq'                => $calculations->get('L7')?->leq_value,
+                'l7_thi_avg'            => $calculations->get('L7')?->thi_average,
+                'l8_leq'                => $calculations->get('L8')?->leq_value,
+                'l8_thi_avg'            => $calculations->get('L8')?->thi_average,
+            ]
+        );
     }
 }
