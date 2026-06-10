@@ -434,7 +434,7 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             THI Average (Daily)
                         </p>
                         <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
-                            {summary.thi_avg_daily != null ? Number(summary.thi_avg_daily).toFixed(2) : 'N/A'}
+                            {summary.thi_avg_daily != null ? Number(summary.thi_avg_daily).toFixed(2) : 'N/A'} °C
                         </p>
                         {summary.thi_avg_daily != null && (
                             <p className="text-xs text-orange-700 dark:text-orange-300 mt-2 font-medium">
