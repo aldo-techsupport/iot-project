@@ -99,26 +99,26 @@ export default function NoiseBarViewDemo() {
                                         <div>
                                             <div className="text-sm text-muted-foreground">LAeq</div>
                                             <div className="text-2xl font-bold">
-                                                {demoCalculations[selectedPeriod]!.leq_value.toFixed(1)} dB
+                                                {demoCalculations[selectedPeriod]!.leq_value.toFixed(2)} dB(A)
                                             </div>
                                         </div>
                                         <div>
                                             <div className="text-sm text-muted-foreground">Average</div>
                                             <div className="text-xl font-semibold">
-                                                {demoCalculations[selectedPeriod]!.average_value.toFixed(1)} dB
+                                                {demoCalculations[selectedPeriod]!.average_value.toFixed(2)} dB(A)
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <div className="text-sm text-muted-foreground">Min</div>
                                                 <div className="text-lg font-semibold">
-                                                    {demoCalculations[selectedPeriod]!.min_value.toFixed(1)} dB
+                                                    {demoCalculations[selectedPeriod]!.min_value.toFixed(2)} dB(A)
                                                 </div>
                                             </div>
                                             <div>
                                                 <div className="text-sm text-muted-foreground">Max</div>
                                                 <div className="text-lg font-semibold">
-                                                    {demoCalculations[selectedPeriod]!.max_value.toFixed(1)} dB
+                                                    {demoCalculations[selectedPeriod]!.max_value.toFixed(2)} dB(A)
                                                 </div>
                                             </div>
                                         </div>
@@ -153,19 +153,19 @@ export default function NoiseBarViewDemo() {
                             <CardContent className="space-y-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded bg-green-500"></div>
-                                    <span className="text-sm">&lt; 70 dB - Safe</span>
+                                    <span className="text-sm">&lt; 70 dB(A) - Safe</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded bg-yellow-500"></div>
-                                    <span className="text-sm">70-79 dB - Caution</span>
+                                    <span className="text-sm">70-79 dB(A) - Caution</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded bg-orange-500"></div>
-                                    <span className="text-sm">80-84 dB - Warning</span>
+                                    <span className="text-sm">80-84 dB(A) - Warning</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded bg-red-500"></div>
-                                    <span className="text-sm">≥ 85 dB - Danger</span>
+                                    <span className="text-sm">≥ 85 dB(A) - Danger</span>
                                 </div>
                             </CardContent>
                         </Card>

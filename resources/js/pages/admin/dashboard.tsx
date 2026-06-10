@@ -88,6 +88,39 @@ export default function AdminDashboard({ stats }: Props) {
         });
     };
 
+    const handleRecalculateAllDates = () => {
+        if (!selectedDevice) {
+            alert('Please fill Device ID');
+            return;
+        }
+
+        if (!confirm(`Recalculate ALL periods (L1–L8) for ALL dates on device ${selectedDevice}? This may take a while.`)) return;
+
+        router.post('/admin/recalculate-all-dates', {
+            device_id: selectedDevice,
+        }, {
+            onSuccess: () => showToast('success', 'All dates recalculated successfully'),
+            onError: () => showToast('error', 'Failed to recalculate all dates'),
+        });
+    };
+
+    const handleRecalculateAllNoisePeriods = () => {
+        if (!selectedDevice || !selectedDate) {
+            alert('Please fill Device ID and Date');
+            return;
+        }
+
+        if (!confirm(`Recalculate ALL 8 periods (L1–L8) for device ${selectedDevice} on ${selectedDate}?`)) return;
+
+        router.post('/admin/recalculate-all-noise', {
+            device_id: selectedDevice,
+            date: selectedDate,
+        }, {
+            onSuccess: () => showToast('success', 'All noise periods recalculated successfully'),
+            onError: () => showToast('error', 'Failed to recalculate all noise periods'),
+        });
+    };
+
     const handleRecalculateDailySummary = () => {
         if (!selectedDevice || !selectedDate) {
             alert('Please fill all fields');
@@ -487,12 +520,54 @@ export default function AdminDashboard({ stats }: Props) {
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex items-end">
+                            <div className="flex items-end gap-2">
                                 <button
                                     onClick={handleRecalculateNoisePeriod}
-                                    className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                                    className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                                 >
                                     Recalculate Period
+                                </button>
+                                <button
+                                    onClick={handleRecalculateAllNoisePeriods}
+                                    className="flex-1 rounded-md bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 flex items-center justify-center gap-1"
+                                    title="Recalculate all 8 periods (L1–L8) at once"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    All Periods
+                                </button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Recalculate All Dates */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <RefreshCw className="h-5 w-5" />
+                            Recalculate All Dates
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">Recalculate ALL periods (L1–L8) for ALL dates on a device. Use this to backfill new fields.</p>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div>
+                                <label className="text-sm font-medium">Device ID</label>
+                                <input
+                                    type="number"
+                                    value={selectedDevice}
+                                    onChange={(e) => setSelectedDevice(e.target.value)}
+                                    className="mt-1 w-full rounded-md border p-2"
+                                    placeholder="Enter device ID"
+                                />
+                            </div>
+                            <div className="flex items-end col-span-2">
+                                <button
+                                    onClick={handleRecalculateAllDates}
+                                    className="w-full rounded-md bg-rose-600 px-4 py-2 text-white hover:bg-rose-700 flex items-center justify-center gap-2"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Recalculate All Dates
                                 </button>
                             </div>
                         </div>
@@ -701,7 +776,7 @@ export default function AdminDashboard({ stats }: Props) {
                                         <tr>
                                             <th className="px-3 py-2 text-left">Slot</th>
                                             <th className="px-3 py-2 text-left">Timestamp</th>
-                                            <th className="px-3 py-2 text-right">Noise (dB)</th>
+                                            <th className="px-3 py-2 text-right">Noise (dB(A))</th>
                                             <th className="px-3 py-2 text-right">Temp (°C)</th>
                                             <th className="px-3 py-2 text-right">Humidity (%)</th>
                                             <th className="px-3 py-2 text-right">THI</th>
@@ -878,7 +953,7 @@ export default function AdminDashboard({ stats }: Props) {
                                     </p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Noise (dB)</label>
+                                    <label className="text-sm font-medium">Noise (dB(A))</label>
                                     <input
                                         type="number"
                                         step="0.01"

@@ -148,6 +148,14 @@ class NoiseStatisticsService
         $avgTemperature = ! empty($temperatures) ? array_sum($temperatures) / count($temperatures) : null;
         $avgHumidity = ! empty($humidities) ? array_sum($humidities) / count($humidities) : null;
 
+        // Min/max for temperature, humidity, THI
+        $minTemperature = ! empty($temperatures) ? min($temperatures) : null;
+        $maxTemperature = ! empty($temperatures) ? max($temperatures) : null;
+        $minHumidity = ! empty($humidities) ? min($humidities) : null;
+        $maxHumidity = ! empty($humidities) ? max($humidities) : null;
+        $minThi = ! empty($thiValues) ? min($thiValues) : null;
+        $maxThi = ! empty($thiValues) ? max($thiValues) : null;
+
         return [
             'data_count' => count($noiseLevels),
             'min_value' => $basicStats['min'],
@@ -161,6 +169,12 @@ class NoiseStatisticsService
             'thi_average' => $thiAverage ? round($thiAverage, 2) : null,
             'avg_temperature' => $avgTemperature ? round($avgTemperature, 2) : null,
             'avg_humidity' => $avgHumidity ? round($avgHumidity, 2) : null,
+            'min_temperature' => $minTemperature ? round($minTemperature, 2) : null,
+            'max_temperature' => $maxTemperature ? round($maxTemperature, 2) : null,
+            'min_humidity' => $minHumidity ? round($minHumidity, 2) : null,
+            'max_humidity' => $maxHumidity ? round($maxHumidity, 2) : null,
+            'min_thi' => $minThi ? round($minThi, 2) : null,
+            'max_thi' => $maxThi ? round($maxThi, 2) : null,
         ];
     }
 

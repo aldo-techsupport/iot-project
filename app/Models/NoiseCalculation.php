@@ -29,6 +29,12 @@ class NoiseCalculation extends Model
         'thi_average',
         'avg_temperature',
         'avg_humidity',
+        'min_temperature',
+        'max_temperature',
+        'min_humidity',
+        'max_humidity',
+        'min_thi',
+        'max_thi',
     ];
 
     protected $casts = [
@@ -48,6 +54,12 @@ class NoiseCalculation extends Model
         'thi_average' => 'float',
         'avg_temperature' => 'float',
         'avg_humidity' => 'float',
+        'min_temperature' => 'float',
+        'max_temperature' => 'float',
+        'min_humidity' => 'float',
+        'max_humidity' => 'float',
+        'min_thi' => 'float',
+        'max_thi' => 'float',
     ];
 
     /**

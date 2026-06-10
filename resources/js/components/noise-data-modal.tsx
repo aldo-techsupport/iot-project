@@ -155,11 +155,7 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                                 <span className="text-muted-foreground">Data Points (1-min intervals):</span>{' '}
                                 <span className="font-semibold">{data.length} / 60</span>
                             </div>
-                            <div>
-                                <span className="text-muted-foreground">Raw Telemetry Collected:</span>{' '}
-                                <span className="font-semibold">{totalCollected}</span>
-                                <span className="text-xs text-muted-foreground ml-1">(5-sec intervals)</span>
-                            </div>
+
                         </div>
 
                         <div className="flex-1 overflow-auto">
@@ -168,7 +164,7 @@ export default function NoiseDataModal({ open, onClose, deviceId, deviceName, pe
                                     <tr>
                                         <th className="px-3 py-2 text-left font-semibold">No</th>
                                         <th className="px-3 py-2 text-left font-semibold">Timestamp</th>
-                                        <th className="px-3 py-2 text-right font-semibold">Noise (dB)</th>
+                                        <th className="px-3 py-2 text-right font-semibold">Noise (dB(A))</th>
                                         <th className="px-3 py-2 text-right font-semibold">Temp (°C)</th>
                                         <th className="px-3 py-2 text-right font-semibold">Humidity (%)</th>
                                         <th className="px-3 py-2 text-right font-semibold">THI (°C)</th>

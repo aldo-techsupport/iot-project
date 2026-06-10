@@ -123,7 +123,7 @@ export default function PeriodBarView({
                                     <div className="flex items-center gap-4">
                                         <div className="flex flex-col">
                                             <span className="text-2xl font-bold">
-                                                {isInvalid ? '—' : `${leqValue.toFixed(1)} dB`}
+                                                {isInvalid ? '—' : `${leqValue.toFixed(2)} dB(A)`}
                                             </span>
                                             <span className="text-xs opacity-80">
                                                 {isInvalid ? 'INVALID DATA' : 'LAeq'}

@@ -33,6 +33,12 @@ interface NoiseCalculation {
     thi_average: number;
     avg_temperature: number | null;
     avg_humidity: number | null;
+    min_temperature: number | null;
+    max_temperature: number | null;
+    min_humidity: number | null;
+    max_humidity: number | null;
+    min_thi: number | null;
+    max_thi: number | null;
     data_count: number;
     is_valid: boolean;
     invalid_reason: string | null;
@@ -644,9 +650,9 @@ export default function DeviceDetailPage({ device, chartData }: Props) {
                                 <CardContent>
                                     <div className="grid gap-2 sm:grid-cols-3">
                                         {[
-                                            { range: '< 27', category: 'Nyaman', color: 'text-green-700 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', description: 'Kondisi nyaman' },
-                                            { range: '27 - 29', category: 'Cukup Nyaman', color: 'text-yellow-700 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', description: 'Kondisi cukup nyaman' },
-                                            { range: '> 29', category: 'Tidak Nyaman', color: 'text-red-700 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', description: 'Kondisi tidak nyaman' },
+                                            { range: '< 27 °C', category: 'Nyaman', color: 'text-green-700 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', description: 'Kondisi nyaman' },
+                                            { range: '27 - 29 °C', category: 'Cukup Nyaman', color: 'text-yellow-700 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', description: 'Kondisi cukup nyaman' },
+                                            { range: '> 29 °C', category: 'Tidak Nyaman', color: 'text-red-700 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', description: 'Kondisi tidak nyaman' },
                                         ].map((item) => (
                                             <div key={item.category} className={`p-3 rounded-lg ${item.bgColor}`}>
                                                 <div className={`font-semibold text-sm ${item.color}`}>{item.category}</div>

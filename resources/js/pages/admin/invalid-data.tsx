@@ -560,7 +560,7 @@ export default function InvalidData({
                                                                                 <th className="px-2 py-1.5 text-center">Fake s/d</th>
                                                                                 <th className="px-2 py-1.5 text-center">Real Pertama</th>
                                                                                 <th className="px-2 py-1.5 text-right">Data Count</th>
-                                                                                <th className="px-2 py-1.5 text-right">Leq (dB)</th>
+                                                                                <th className="px-2 py-1.5 text-right">Leq (dB(A))</th>
                                                                                 <th className="px-2 py-1.5 text-center">Valid</th>
                                                                             </tr>
                                                                         </thead>

@@ -335,7 +335,7 @@ export default function NoiseSvgChart({ deviceId, period, date, autoRefresh = fa
                                             </text>
                                             {/* Noise */}
                                             <text x={getX(i) + 15} y={padding.top + 74} fontSize="10" fill="#a855f7">
-                                                Noise: {d.noise_level.toFixed(1)} dB
+                                                Noise: {d.noise_level.toFixed(2)} dB(A)
                                             </text>
                                             {/* Filled status */}
                                             {d.is_filled && (

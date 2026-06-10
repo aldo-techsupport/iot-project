@@ -93,7 +93,7 @@ export default function PeriodBarSelector({
                                 {hasData ? (
                                     <div className="flex items-center gap-3">
                                         <span className="text-xl font-bold">
-                                            {leqValue.toFixed(1)} dB
+                                            {leqValue.toFixed(2)} dB(A)
                                         </span>
                                         <span className="text-sm opacity-80">
                                             LAeq

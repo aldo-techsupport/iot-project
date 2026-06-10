@@ -55,6 +55,86 @@ class AdminDataController extends Controller
     }
 
     /**
+     * Recalculate ALL noise periods (L1–L8) for a device and date in one go
+     */
+    public function recalculateAllNoisePeriods(Request $request)
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'date'      => 'required|date',
+        ]);
+
+        $periods = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
+        $success = [];
+        $failed  = [];
+
+        foreach ($periods as $period) {
+            try {
+                $this->triggerRecalculate((int) $validated['device_id'], $period, $validated['date']);
+                $success[] = $period;
+            } catch (\Exception $e) {
+                $failed[] = $period;
+                Log::error("Recalculate all — {$period} failed: " . $e->getMessage());
+            }
+        }
+
+        $msg = 'Recalculated: ' . implode(', ', $success);
+        if (!empty($failed)) {
+            $msg .= '. Failed: ' . implode(', ', $failed);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Recalculate ALL periods (L1–L8) for ALL dates for a device
+     * Runs as a queued/synchronous loop over every distinct calculation_date
+     */
+    public function recalculateAllDates(Request $request)
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+        ]);
+
+        $deviceId = (int) $validated['device_id'];
+        $periods  = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
+
+        // Get all distinct dates that have noise filtered data for this device
+        $dates = \App\Models\NoiseFilteredData::where('device_id', $deviceId)
+            ->selectRaw('DATE(calculation_date) as date')
+            ->distinct()
+            ->orderBy('date')
+            ->pluck('date')
+            ->toArray();
+
+        if (empty($dates)) {
+            return back()->with('error', 'No noise data found for this device.');
+        }
+
+        $totalSuccess = 0;
+        $totalFailed  = 0;
+
+        foreach ($dates as $date) {
+            foreach ($periods as $period) {
+                try {
+                    $this->triggerRecalculate($deviceId, $period, $date);
+                    $totalSuccess++;
+                } catch (\Exception $e) {
+                    $totalFailed++;
+                    Log::error("Recalculate all dates — device {$deviceId} {$period} {$date} failed: " . $e->getMessage());
+                }
+            }
+        }
+
+        $msg = "Recalculated {$totalSuccess} period(s) across " . count($dates) . " date(s).";
+        if ($totalFailed > 0) {
+            $msg .= " {$totalFailed} failed (check logs).";
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
      * Recalculate daily summary for a specific date
      */
     public function recalculateDailySummary(Request $request)

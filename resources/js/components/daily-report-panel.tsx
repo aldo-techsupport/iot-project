@@ -322,10 +322,7 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                                     Laeq 8h
                                 </p>
                                 <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                                    {Number(summary.ls_value).toFixed(2)} dB
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    Formula: 10 × log(1/8 × Σ(Tᵢ × 10^(0.1×Lᵢ)))
+                                    {Number(summary.ls_value).toFixed(2)} dB(A)
                                 </p>
                             </div>
                             <Badge variant={Number(summary.ls_value) > 85 ? 'destructive' : 'default'} className="text-lg px-4 py-2">
@@ -334,18 +331,42 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                         </div>
                     </div>
 
-                    {/* TWA, DND and THI Daily Average */}
+                    {/* T, DND, TWA */}
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="rounded-lg border p-4">
                             <p className="text-sm font-medium text-muted-foreground mb-1">
-                                TWA (Time Weighted Average)
+                                T (Waktu Maksimal)
                             </p>
                             <p className="text-3xl font-bold">
-                                {Number(summary.twa_value).toFixed(2)} dBA
+                                {summary.allowable_time != null ? summary.allowable_time.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'} jam
                             </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Formula: 10 × log(DND/100) + 85
-                            </p>
+                            <Badge
+                                variant={summary.allowable_time != null && summary.allowable_time < 8 ? 'destructive' : 'default'}
+                                className="mt-2"
+                            >
+                                {summary.allowable_time == null ? 'N/A' : summary.allowable_time < 8 ? 'Reduced Time' : summary.allowable_time > 24 ? 'Very Safe' : 'Full Time'}
+                            </Badge>
+                            <div className="mt-3 pt-3 border-t text-xs text-muted-foreground space-y-1">
+                                <p>Waktu paparan aktual: <span className="font-bold text-foreground">8 jam</span></p>
+                                <p>Waktu maksimal: <span className="font-bold text-foreground">
+                                    {summary.allowable_time != null ? summary.allowable_time.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'} jam
+                                </span></p>
+                            </div>
+                            {summary.allowable_time != null && summary.allowable_time < 8 && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
+                                    ⚠️ Waktu paparan melebihi batas yang diizinkan
+                                </p>
+                            )}
+                            {summary.allowable_time != null && summary.allowable_time >= 8 && summary.allowable_time <= 24 && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                                    ✓ Dalam batas aman
+                                </p>
+                            )}
+                            {summary.allowable_time != null && summary.allowable_time > 24 && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                                    ✓ Tingkat kebisingan sangat rendah, sangat aman
+                                </p>
+                            )}
                         </div>
                         <div className="rounded-lg border p-4">
                             <p className="text-sm font-medium text-muted-foreground mb-1">
@@ -354,42 +375,18 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                             <p className="text-3xl font-bold">
                                 {Number(summary.dnd_value).toFixed(2)}%
                             </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Formula: D(%) = (C/T) × 100%, where T = 8 / 2^((L-85)/3)
-                            </p>
-                            {Number(summary.dnd_value) > 100 && (
-                                <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
-                                    ⚠️ Exceeds safe limit (&gt;100%)
-                                </p>
-                            )}
-                            {Number(summary.dnd_value) <= 100 && (
-                                <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
-                                    ✓ Within safe limit (≤100%)
-                                </p>
-                            )}
                         </div>
-                        <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 p-4">
+                        <div className="rounded-lg border p-4">
                             <p className="text-sm font-medium text-muted-foreground mb-1">
-                                THI Average (Daily)
+                                TWA (Time Weighted Average)
                             </p>
-                            <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
-                                {summary.thi_avg_daily != null ? Number(summary.thi_avg_daily).toFixed(2) : 'N/A'}
+                            <p className="text-3xl font-bold">
+                                {Number(summary.twa_value).toFixed(2)} dB(A)
                             </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Rata-rata THI dari periode L1-L8
-                            </p>
-                            {summary.thi_avg_daily != null && (
-                                <p className="text-xs text-orange-700 dark:text-orange-300 mt-2 font-medium">
-                                    {Number(summary.thi_avg_daily) < 24 ? '❄️ Sejuk' :
-                                     Number(summary.thi_avg_daily) < 27 ? '✓ Nyaman' :
-                                     Number(summary.thi_avg_daily) < 29 ? '⚠️ Agak Panas' :
-                                     '🔥 Panas'}
-                                </p>
-                            )}
                         </div>
                     </div>
 
-                    {/* Temperature and Humidity Daily Average */}
+                    {/* Suhu, Kelembaban */}
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="rounded-lg border bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 p-4">
                             <p className="text-sm font-medium text-muted-foreground mb-1">
@@ -431,126 +428,27 @@ export default function DailyReportPanel({ deviceId, date, loading: externalLoad
                         </div>
                     </div>
 
-                    {/* Allowable Time (T) */}
-                    <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground mb-1">
-                                    T (Waktu Maksimal yang Diizinkan)
-                                </p>
-                                <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">
-                                    {summary.allowable_time != null
-                                        ? summary.allowable_time.toLocaleString('id-ID', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        })
-                                        : 'N/A'} jam
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    Formula: T = 8 / 2^((L-85)/3)
-                                </p>
-                            </div>
-                            <Badge
-                                variant={summary.allowable_time != null && summary.allowable_time < 8 ? 'destructive' : 'default'}
-                                className="text-lg px-4 py-2"
-                            >
-                                {summary.allowable_time == null ? 'N/A' : summary.allowable_time < 8 ? 'Reduced Time' : summary.allowable_time > 24 ? 'Very Safe' : 'Full Time'}
-                            </Badge>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
-                            <p className="text-sm text-amber-700 dark:text-amber-300">
-                                Waktu paparan aktual: <span className="font-bold">8 jam</span>
+                    {/* THI */}
+                    <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 p-4">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">
+                            THI Average (Daily)
+                        </p>
+                        <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
+                            {summary.thi_avg_daily != null ? Number(summary.thi_avg_daily).toFixed(2) : 'N/A'}
+                        </p>
+                        {summary.thi_avg_daily != null && (
+                            <p className="text-xs text-orange-700 dark:text-orange-300 mt-2 font-medium">
+                                {Number(summary.thi_avg_daily) < 24 ? '❄️ Sejuk' :
+                                 Number(summary.thi_avg_daily) < 27 ? '✓ Nyaman' :
+                                 Number(summary.thi_avg_daily) < 29 ? '⚠️ Agak Panas' :
+                                 '🔥 Panas'}
                             </p>
-                            <p className="text-sm text-amber-700 dark:text-amber-300">
-                                Waktu maksimal yang diizinkan: <span className="font-bold">
-                                    {summary.allowable_time != null
-                                        ? summary.allowable_time.toLocaleString('id-ID', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        })
-                                        : 'N/A'} jam
-                                </span>
-                            </p>
-                            {summary.allowable_time != null && summary.allowable_time < 8 && (
-                                <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-medium">
-                                    ⚠️ Waktu paparan melebihi batas yang diizinkan
-                                </p>
-                            )}
-                            {summary.allowable_time != null && summary.allowable_time >= 8 && summary.allowable_time <= 24 && (
-                                <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
-                                    ✓ Dalam batas aman
-                                </p>
-                            )}
-                            {summary.allowable_time > 24 && (
-                                <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
-                                    ✓ Tingkat kebisingan sangat rendah, sangat aman
-                                </p>
-                            )}
-                        </div>
+                        )}
                     </div>
 
-                    {/* Period Breakdown */}
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Period Breakdown (Leq Values)</h3>
-                        <div className="grid gap-3 md:grid-cols-4">
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L1</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l1_leq != null ? Number(summary.l1_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L2</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l2_leq != null ? Number(summary.l2_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L3</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l3_leq != null ? Number(summary.l3_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L4</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l4_leq != null ? Number(summary.l4_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L5</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l5_leq != null ? Number(summary.l5_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L6</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l6_leq != null ? Number(summary.l6_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L7</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l7_leq != null ? Number(summary.l7_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                            <div className="rounded-lg border bg-muted/50 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">L8</span>
-                                    <Badge variant="outline">1 hour</Badge>
-                                </div>
-                                <p className="text-2xl font-bold">{summary.l8_leq != null ? Number(summary.l8_leq).toFixed(2) : 'N/A'} dB(A)</p>
-                            </div>
-                        </div>
-                    </div>
+
+
+
 
                     {/* Calculation Details */}
                     <div className="rounded-lg border bg-muted/30 p-4">

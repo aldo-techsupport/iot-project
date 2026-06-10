@@ -19,6 +19,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\AdminDataController::class, 'index'])->name('dashboard');
         Route::post('/recalculate-noise-period', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateNoisePeriod'])->name('recalculate.noise.period');
+        Route::post('/recalculate-all-noise', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateAllNoisePeriods'])->name('recalculate.noise.all');
+        Route::post('/recalculate-all-dates', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateAllDates'])->name('recalculate.noise.all.dates');
         Route::post('/recalculate-daily-summary', [\App\Http\Controllers\Admin\AdminDataController::class, 'recalculateDailySummary'])->name('recalculate.daily');
         Route::delete('/telemetry/{id}', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteTelemetry'])->name('delete.telemetry');
         Route::delete('/noise-data/{id}', [\App\Http\Controllers\Admin\AdminDataController::class, 'deleteNoiseData'])->name('delete.noise');

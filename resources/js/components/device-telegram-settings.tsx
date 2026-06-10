@@ -254,7 +254,7 @@ export default function DeviceTelegramSettings({ device }: Props) {
                                 2️⃣
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">dB &gt; 85</p>
+                                <p className="font-medium">dB(A) &gt; 85</p>
                                 <p className="text-sm font-semibold text-orange-600">⚠️ PERINGATAN KEBISINGAN!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Tingkat kebisingan melebihi 85 dB(A). Suara sudah berada di ambang batas yang dapat mengganggu kenyamanan dan kesehatan. Segera evaluasi sumber kebisingan.
@@ -267,7 +267,7 @@ export default function DeviceTelegramSettings({ device }: Props) {
                                 3️⃣
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">dB &gt; 85 &amp; THI &gt; 29</p>
+                                <p className="font-medium">dB(A) &gt; 85 &amp; THI &gt; 29</p>
                                 <p className="text-sm font-semibold text-red-600">🚨 PERINGATAN KRITIS!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Kebisingan &gt; 85 dB(A) <strong>dan</strong> THI &gt; 29 (Kondisi Panas). Lingkungan dalam kondisi tidak nyaman dan berisiko. Segera lakukan tindakan pengendalian suhu dan kebisingan.
@@ -280,7 +280,7 @@ export default function DeviceTelegramSettings({ device }: Props) {
                                 4️⃣
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">dB &gt; 100</p>
+                                <p className="font-medium">dB(A) &gt; 100</p>
                                 <p className="text-sm font-semibold text-red-700">🚨 BAHAYA KEBISINGAN TINGGI!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Tingkat kebisingan melebihi 100 dB(A). Berpotensi merusak pendengaran jika terpapar dalam waktu lama. Gunakan pelindung telinga dan periksa sumber suara segera!
@@ -293,7 +293,7 @@ export default function DeviceTelegramSettings({ device }: Props) {
                                 5️⃣
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">dB &gt; 100 &amp; THI &gt; 29</p>
+                                <p className="font-medium">dB(A) &gt; 100 &amp; THI &gt; 29</p>
                                 <p className="text-sm font-semibold text-red-900">🚨🚨 KONDISI DARURAT!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Kebisingan &gt; 100 dB(A) <strong>dan</strong> THI &gt; 29 (Suhu Ekstrem). Lingkungan sangat berbahaya dan tidak aman. Segera lakukan evakuasi atau tindakan pengamanan.

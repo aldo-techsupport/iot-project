@@ -213,7 +213,7 @@ export default function TelemetrySvgChart({ data }: TelemetrySvgChartProps) {
                             transform={`rotate(90, ${padding.left + plotWidth + 60}, ${padding.top + plotHeight / 2})`}
                             fontWeight="bold"
                         >
-                            Noise (dB)
+                            Noise (dB(A))
                         </text>
 
                         {/* X-axis */}
