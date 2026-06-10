@@ -925,35 +925,21 @@ export default function AdminDashboard({ stats }: Props) {
                             </p>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm font-medium">
-                                        Pilih Menit Kosong{' '}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            ({availableSlots.length} slot tersedia dari 60)
-                                        </span>
-                                    </label>
-                                    {availableSlots.length > 0 ? (
-                                        <select
-                                            value={newNoiseData.measured_at}
-                                            onChange={(e) => setNewNoiseData({ ...newNoiseData, measured_at: e.target.value })}
-                                            className="mt-1 w-full rounded-md border p-2 font-mono"
-                                        >
-                                            {availableSlots.map((slot) => (
-                                                <option key={slot.slot_index} value={slot.measured_at}>
-                                                    Slot {String(slot.slot_index).padStart(2, '0')} — {slot.time}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <div className="mt-1 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300">
-                                            Semua 60 slot di periode {selectedPeriod} sudah terisi. Tutup modal lalu edit slot yang ada.
-                                        </div>
-                                    )}
+                                    <label className="text-sm font-medium">Timestamp</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={newNoiseData.measured_at}
+                                        min={`${selectedDate}T${periodStartTimes[selectedPeriod]}`}
+                                        max={`${selectedDate}T${periodEndTimes[selectedPeriod]}`}
+                                        onChange={(e) => setNewNoiseData({ ...newNoiseData, measured_at: e.target.value })}
+                                        className="mt-1 w-full rounded-md border p-2"
+                                    />
                                     <p className="mt-1 text-xs text-muted-foreground">
-                                        Periode {selectedPeriod}: <strong>{periodLabels[selectedPeriod]}</strong>
+                                        Harus dalam rentang periode {selectedPeriod}: <strong>{periodLabels[selectedPeriod]}</strong>
                                     </p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Noise (dB(A))</label>
+                                    <label className="text-sm font-medium">Noise (dB)</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -988,7 +974,7 @@ export default function AdminDashboard({ stats }: Props) {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleAddNoiseData}
-                                        disabled={loadingAction || availableSlots.length === 0}
+                                        disabled={loadingAction}
                                         className="flex-1 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
                                     >
                                         {loadingAction ? 'Saving...' : 'Add Data'}
