@@ -179,10 +179,12 @@ class NoiseStatisticsService
     }
 
     /**
-     * Calculate Ls (Leq Siang - Daytime Average Noise Level)
-     * Formula: Ls = 10 × log10(1/N × Σ(Ti × 10^(0.1×Li)))
+     * Calculate Ls (LAeq,8h - Leq selama 8 jam)
+     * Formula: LAeq,8h = 10 × log10(1/T_total × Σ(Ti × 10^(0.1×Li)))
      *
-     * N = 60 (1 data per minute for 1 hour period)
+     * T_total = Σ Ti = total waktu exposure (jam), untuk 8 jam kerja = 8
+     * Ti      = interval waktu tiap periode (jam)
+     * Li      = nilai Leq tiap periode
      *
      * @param  array  $periodData  Array of ['period' => 'L1', 'leq' => 97.63, 'duration_hours' => 1, 'data_count' => 60]
      * @return float Ls value in dB
@@ -190,7 +192,7 @@ class NoiseStatisticsService
     public function calculateLs(array $periodData): float
     {
         $sum = 0;
-        $N = 60; // Fixed: 60 data points (1 per minute for 1 hour)
+        $totalDuration = 0; // Σ Ti (jam)
 
         foreach ($periodData as $data) {
             $Ti = $data['duration_hours'];
@@ -198,10 +200,15 @@ class NoiseStatisticsService
 
             // Calculate: Ti × 10^(0.1×Li)
             $sum += $Ti * pow(10, 0.1 * $Li);
+            $totalDuration += $Ti;
         }
 
-        // Calculate: 10 × log10(1/N × sum) where N = 60
-        $ls = 10 * log10((1 / $N) * $sum);
+        if ($totalDuration == 0) {
+            return 0;
+        }
+
+        // Calculate: 10 × log10(1/T_total × sum)
+        $ls = 10 * log10((1 / $totalDuration) * $sum);
 
         return round($ls, 2);
     }
