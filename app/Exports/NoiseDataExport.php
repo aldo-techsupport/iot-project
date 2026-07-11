@@ -2,20 +2,22 @@
 
 namespace App\Exports;
 
-use App\Models\NoiseRawData;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Carbon\Carbon;
 
 class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     protected $deviceId;
+
     protected $period;
+
     protected $date;
+
     protected $deviceName;
 
     public function __construct($deviceId, $period, $date, $deviceName = null)
@@ -27,11 +29,27 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
     }
 
     /**
-     * Get the data collection
+     * Get the data collection.
+     *
+     * Uses the exact same priority as the on-screen modal (getRealTimeNoiseData):
+     * read the persisted noise_filtered_data snapshot first so manual admin edits
+     * are reflected, and only fall back to live telemetry selection when no
+     * snapshot exists yet.
      */
     public function collection()
     {
-        // Use the same smart selection logic as in DashboardController
+        // Prioritas 1: snapshot noise_filtered_data (mencerminkan edit manual admin)
+        $filteredRows = \App\Services\NoiseDataSelectionService::getFromDb(
+            (int) $this->deviceId,
+            $this->period,
+            $this->date
+        );
+
+        if ($filteredRows->isNotEmpty()) {
+            return $filteredRows;
+        }
+
+        // Prioritas 2: fallback seleksi live dari telemetry saat snapshot belum ada
         $periodTimes = [
             'L1' => ['start' => '08:00:00', 'end' => '09:00:00'],
             'L2' => ['start' => '09:00:00', 'end' => '10:00:00'],
@@ -46,15 +64,12 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
         $officialStart = Carbon::parse("{$this->date} {$periodTimes[$this->period]['start']}");
         $officialEnd = Carbon::parse("{$this->date} {$periodTimes[$this->period]['end']}");
 
-        // Select real data at 1-minute intervals from official period only
-        $selectedData = \App\Services\NoiseDataSelectionService::selectOneMinuteIntervalData(
+        return \App\Services\NoiseDataSelectionService::selectOneMinuteIntervalData(
             $this->deviceId,
             $this->period,
             $officialStart,
             $officialEnd
         );
-
-        return $selectedData;
     }
 
     /**
@@ -65,15 +80,19 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
         static $counter = 0;
         $counter++;
 
-        // Calculate THI (Temperature Humidity Index)
+        // Filtered-data snapshot uses noise_level; live telemetry uses noise_db.
+        $noise = $data->noise_db ?? $data->noise_level ?? 0;
         $temperature = $data->temperature ?? 0;
         $humidity = $data->humidity ?? 0;
-        $thi = $temperature - (0.55 - 0.0055 * $humidity) * ($temperature - 14.5);
+
+        // THI (Temperature Humidity Index) — same formula as the modal display
+        // and NoiseStatisticsService: THI = 0.8 × Ta + (RH × Ta) / 500
+        $thi = 0.8 * $temperature + ($humidity * $temperature) / 500;
 
         return [
             $counter,
             $data->measured_at->format('Y-m-d H:i:s'),
-            number_format($data->noise_db ?? 0, 2),
+            number_format($noise, 2),
             number_format($temperature, 2),
             number_format($humidity, 2),
             number_format($thi, 2),
@@ -105,7 +124,7 @@ class NoiseDataExport implements FromCollection, WithHeadings, WithMapping, With
                 'font' => ['bold' => true, 'size' => 12],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '4F46E5']
+                    'startColor' => ['rgb' => '4F46E5'],
                 ],
                 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
             ],
